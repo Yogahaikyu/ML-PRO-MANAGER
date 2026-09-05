@@ -1,364 +1,693 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-  <title>MLBB Pro Manager V1.5</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-  <link rel="stylesheet" href="style.css">
+  <meta
+    name="theme-color"
+    content="#0b1020"
+  >
+
+  <title>MLBB Pro Manager</title>
+
+  <link
+    rel="stylesheet"
+    href="./style.css"
+  >
 </head>
 
 <body>
 
-<div id="app">
+  <!-- =====================================================
+       APP
+       ===================================================== -->
 
-  <!-- COUNTRY -->
-  <section id="countryScreen" class="screen active">
-    <div class="hero">
-      <div class="logo">MLBB</div>
-      <h1>PRO MANAGER</h1>
-      <p>Build • Manage • Compete • Become Champion</p>
-    </div>
+  <div id="app">
 
-    <div class="panel">
-      <h2>🌎 Pilih Negara / Region</h2>
-      <div id="countryList" class="grid"></div>
-    </div>
-  </section>
+    <!-- ===================================================
+         COUNTRY SCREEN
+         =================================================== -->
 
+    <section
+      id="countryScreen"
+      class="screen"
+    >
 
-  <!-- LEAGUE -->
-  <section id="leagueScreen" class="screen">
+      <div class="container">
 
-    <div class="topbar">
-      <button onclick="showScreen('countryScreen')">←</button>
-      <div>
-        <strong>League Selection</strong>
-        <small id="leagueCountryTitle"></small>
-      </div>
-    </div>
+        <div class="hero">
 
-    <div class="panel">
-      <h2>🏆 Pilih Liga</h2>
-      <div id="leagueList" class="grid"></div>
-    </div>
+          <div class="logo">
+            MLBB
+          </div>
 
-  </section>
+          <h1>
+            MLBB PRO MANAGER
+          </h1>
 
+          <p>
+            Build your organization.
+            Create your dynasty.
+          </p>
 
-  <!-- TEAM -->
-  <section id="teamScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showScreen('leagueScreen')">←</button>
-      <strong>Select Team</strong>
-    </div>
-
-    <div class="panel">
-      <h2 id="selectedLeagueName">League</h2>
-      <div id="teamList" class="grid"></div>
-    </div>
-
-  </section>
-
-
-  <!-- MANAGER -->
-  <section id="managerSetupScreen" class="screen">
-
-    <div class="panel setup">
-
-      <div class="hero">
-        <div class="logo">🎮</div>
-        <h1>START CAREER</h1>
-      </div>
-
-      <label>Manager Name</label>
-      <input id="managerName" placeholder="Nama manager">
-
-      <label>Target</label>
-
-      <div class="target-grid">
-        <button onclick="selectTarget('champion')" id="targetChampion">
-          🏆 Champion
-        </button>
-
-        <button onclick="selectTarget('top3')" id="targetTop3">
-          🥉 Top 3
-        </button>
-
-        <button onclick="selectTarget('top5')" id="targetTop5">
-          ⭐ Top 5
-        </button>
-
-        <button onclick="selectTarget('survive')" id="targetSurvive">
-          🛡️ Survive
-        </button>
-      </div>
-
-      <button class="primary big" onclick="startCareer()">
-        START CAREER
-      </button>
-
-    </div>
-
-  </section>
-
-
-  <!-- DASHBOARD -->
-  <section id="dashboardScreen" class="screen">
-
-    <header class="game-header">
-
-      <div>
-        <strong id="dashTeamName">Team</strong>
-        <small id="dashLeague">League</small>
-      </div>
-
-      <div class="header-money">
-        💰 <span id="dashBudget">0</span>
-      </div>
-
-    </header>
-
-    <main>
-
-      <div id="dashboardMain"></div>
-
-      <div class="dashboard-grid">
-
-        <button onclick="showRoster()">👥<span>Roster</span></button>
-        <button onclick="showTransfer()">💰<span>Transfer</span></button>
-        <button onclick="showSchedule()">📅<span>Schedule</span></button>
-        <button onclick="showScouting()">🔎<span>Scouting</span></button>
-        <button onclick="showWorld()">🌎<span>World</span></button>
-        <button onclick="showTournament()">🏆<span>Tournament</span></button>
-        <button onclick="showHistory()">📜<span>History</span></button>
-        <button onclick="showInbox()">📨<span>Inbox</span></button>
-
-      </div>
-
-    </main>
-
-    <nav class="bottom-nav">
-      <button onclick="showDashboard()">🏠</button>
-      <button onclick="showRoster()">👥</button>
-      <button onclick="showSchedule()">📅</button>
-      <button onclick="advanceDay()">⏩</button>
-    </nav>
-
-  </section>
-
-
-  <!-- ROSTER -->
-  <section id="rosterScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showDashboard()">←</button>
-      <strong>👥 Roster</strong>
-    </div>
-
-    <div class="tabs">
-      <button onclick="renderRoster('all')">ALL</button>
-      <button onclick="renderRoster('starting')">STARTING 5</button>
-      <button onclick="renderRoster('bench')">BENCH</button>
-    </div>
-
-    <div id="rosterList" class="player-list"></div>
-
-  </section>
-
-
-  <!-- TRANSFER -->
-  <section id="transferScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showDashboard()">←</button>
-      <strong>💰 Transfer Market</strong>
-    </div>
-
-    <div id="transferList" class="player-list"></div>
-
-  </section>
-
-
-  <!-- SCHEDULE -->
-  <section id="scheduleScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showDashboard()">←</button>
-      <strong>📅 Schedule</strong>
-    </div>
-
-    <div id="scheduleList"></div>
-
-  </section>
-
-
-  <!-- SCOUTING -->
-  <section id="scoutingScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showDashboard()">←</button>
-      <strong>🔎 Scouting</strong>
-    </div>
-
-    <div class="panel">
-
-      <p>
-        Cari pemain berdasarkan role dan rating.
-      </p>
-
-      <select id="scoutRole" onchange="renderScouting()">
-        <option value="ALL">All Roles</option>
-        <option value="EXP">EXP</option>
-        <option value="JG">Jungle</option>
-        <option value="MID">Mid</option>
-        <option value="GOLD">Gold</option>
-        <option value="ROAM">Roam</option>
-      </select>
-
-      <div id="scoutingList" class="player-list"></div>
-
-    </div>
-
-  </section>
-
-
-  <!-- WORLD -->
-  <section id="worldScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showDashboard()">←</button>
-      <strong>🌎 World Ranking</strong>
-    </div>
-
-    <div id="worldList"></div>
-
-  </section>
-
-
-  <!-- TOURNAMENT -->
-  <section id="tournamentScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showDashboard()">←</button>
-      <strong>🏆 Tournament</strong>
-    </div>
-
-    <div id="tournamentContent"></div>
-
-  </section>
-
-
-  <!-- HISTORY -->
-  <section id="historyScreen" class="screen">
-
-    <div class="topbar">
-      <button onclick="showDashboard()">←</button>
-      <strong>📜 History</strong>
-    </div>
-
-    <div id="historyList"></div>
-
-  </section>
-
-
-  <!-- MATCH -->
-  <section id="matchScreen" class="screen">
-
-    <div class="match-container">
-
-      <div class="match-header">
-        <span id="matchLeague">REGULAR SEASON</span>
-        <small id="matchDate"></small>
-      </div>
-
-      <div class="match-teams">
-
-        <div class="match-team">
-          <div id="homeTeamLogo" class="team-logo">🏆</div>
-          <h2 id="homeTeamName">HOME</h2>
         </div>
 
-        <div class="vs">
-          <div id="matchSeries">BO3</div>
-          <strong>VS</strong>
-        </div>
+        <div class="card">
 
-        <div class="match-team">
-          <div id="awayTeamLogo" class="team-logo">⚔️</div>
-          <h2 id="awayTeamName">AWAY</h2>
+          <h2>
+            Pilih Negara / Region
+          </h2>
+
+          <div
+            id="countryList"
+            class="country-list"
+          ></div>
+
         </div>
 
       </div>
 
-      <div id="matchLineup"></div>
+    </section>
 
-      <button class="primary big" onclick="simulateCurrentMatch()">
-        🎮 PLAY MATCH
-      </button>
+
+    <!-- ===================================================
+         LEAGUE SCREEN
+         =================================================== -->
+
+    <section
+      id="leagueScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showScreen('countryScreen')"
+          >
+            ← Kembali
+          </button>
+
+        </div>
+
+        <div class="card">
+
+          <h2>
+            Pilih Liga
+          </h2>
+
+          <div
+            id="leagueList"
+            class="league-list"
+          ></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         TEAM SCREEN
+         =================================================== -->
+
+    <section
+      id="teamScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showScreen('leagueScreen')"
+          >
+            ← Kembali
+          </button>
+
+        </div>
+
+        <div class="card">
+
+          <h2>
+            Pilih Tim
+          </h2>
+
+          <div
+            id="teamList"
+            class="team-list"
+          ></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         CAREER SETUP
+         =================================================== -->
+
+    <section
+      id="careerScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="card">
+
+          <h2>
+            Mulai Karier
+          </h2>
+
+          <div
+            id="careerInfo"
+          ></div>
+
+          <button
+            class="primary-button"
+            onclick="startCareer()"
+          >
+            MULAI KARIER
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         DASHBOARD
+         =================================================== -->
+
+    <section
+      id="dashboardScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <header class="dashboard-header">
+
+          <div>
+
+            <h1>
+              MLBB PRO MANAGER
+            </h1>
+
+            <p id="dashboardDate">
+              -
+            </p>
+
+          </div>
+
+          <button
+            onclick="saveGame()"
+          >
+            💾 Save
+          </button>
+
+        </header>
+
+
+        <!-- TEAM INFO -->
+
+        <div
+          id="dashboardTeam"
+          class="card"
+        ></div>
+
+
+        <!-- NEXT MATCH -->
+
+        <div
+          id="nextMatch"
+          class="card"
+        ></div>
+
+
+        <!-- DASHBOARD MENU -->
+
+        <div class="menu-grid">
+
+          <button
+            onclick="renderRoster()"
+          >
+            👥
+            <span>Roster</span>
+          </button>
+
+          <button
+            onclick="renderTransfer()"
+          >
+            💰
+            <span>Transfer</span>
+          </button>
+
+          <button
+            onclick="renderScouting()"
+          >
+            🔎
+            <span>Scouting</span>
+          </button>
+
+          <button
+            onclick="renderSchedule()"
+          >
+            📅
+            <span>Schedule</span>
+          </button>
+
+          <button
+            onclick="renderWorldRanking()"
+          >
+            🌎
+            <span>World Ranking</span>
+          </button>
+
+          <button
+            onclick="renderTournament()"
+          >
+            🏆
+            <span>Tournament</span>
+          </button>
+
+          <button
+            onclick="renderHistory()"
+          >
+            📜
+            <span>History</span>
+          </button>
+
+          <button
+            onclick="renderInbox()"
+          >
+            📬
+            <span>Inbox</span>
+          </button>
+
+        </div>
+
+
+        <!-- DASHBOARD CONTENT -->
+
+        <div
+          id="dashboardContent"
+          class="card"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         ROSTER
+         =================================================== -->
+
+    <section
+      id="rosterScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            Roster
+          </h2>
+
+        </div>
+
+        <div
+          id="rosterList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         PLAYER PROFILE
+         =================================================== -->
+
+    <section
+      id="playerScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="renderRoster()"
+          >
+            ← Roster
+          </button>
+
+        </div>
+
+        <div
+          id="playerProfile"
+          class="card"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         TRANSFER
+         =================================================== -->
+
+    <section
+      id="transferScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            Transfer Market
+          </h2>
+
+        </div>
+
+        <div
+          id="transferList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         SCOUTING
+         =================================================== -->
+
+    <section
+      id="scoutingScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            Scouting
+          </h2>
+
+        </div>
+
+        <div
+          id="scoutingList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         SCHEDULE
+         =================================================== -->
+
+    <section
+      id="scheduleScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            Schedule
+          </h2>
+
+        </div>
+
+        <div
+          id="scheduleList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         WORLD RANKING
+         =================================================== -->
+
+    <section
+      id="worldScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            World Ranking
+          </h2>
+
+        </div>
+
+        <div
+          id="worldRankingList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         TOURNAMENT
+         =================================================== -->
+
+    <section
+      id="tournamentScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            Tournament
+          </h2>
+
+        </div>
+
+        <div
+          id="tournamentList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         HISTORY
+         =================================================== -->
+
+    <section
+      id="historyScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            History
+          </h2>
+
+        </div>
+
+        <div
+          id="historyList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         INBOX
+         =================================================== -->
+
+    <section
+      id="inboxScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div class="topbar">
+
+          <button
+            onclick="showDashboard()"
+          >
+            ← Dashboard
+          </button>
+
+          <h2>
+            Inbox
+          </h2>
+
+        </div>
+
+        <div
+          id="inboxList"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         MATCH
+         =================================================== -->
+
+    <section
+      id="matchScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div
+          id="matchContent"
+          class="card"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         RESULT
+         =================================================== -->
+
+    <section
+      id="resultScreen"
+      class="screen hidden"
+    >
+
+      <div class="container">
+
+        <div
+          id="resultContent"
+          class="card"
+        ></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         MODAL
+         =================================================== -->
+
+    <div
+      id="modal"
+      class="modal hidden"
+    >
+
+      <div
+        id="modalContent"
+        class="modal-content"
+      ></div>
 
     </div>
 
-  </section>
-
-
-  <!-- RESULT -->
-  <section id="resultScreen" class="screen">
-
-    <div class="result-container">
-
-      <div id="resultIcon">🏆</div>
-
-      <h1 id="resultTitle">VICTORY</h1>
-
-      <h2 id="resultScore">2 - 1</h2>
-
-      <p id="resultText"></p>
-
-      <div id="resultMvp"></div>
-
-      <button class="primary big" onclick="afterMatch()">
-        CONTINUE
-      </button>
-
-    </div>
-
-  </section>
-
-
-  <!-- PLAYER MODAL -->
-  <div id="playerModal" class="modal">
-    <div class="modal-box">
-
-      <button class="close" onclick="closeModal()">×</button>
-
-      <div id="playerProfile"></div>
-
-    </div>
   </div>
 
 
-  <!-- INBOX MODAL -->
-  <div id="inboxModal" class="modal">
-    <div class="modal-box">
+  <!-- =====================================================
+       IMPORTANT SCRIPT ORDER
+       ===================================================== -->
 
-      <button class="close" onclick="closeInbox()">×</button>
+  <script src="./countries.js"></script>
 
-      <h2>📨 Inbox</h2>
+  <script src="./mpl_data.js"></script>
 
-      <div id="inboxList"></div>
-
-    </div>
-  </div>
-
-</div>
-
-<script src="countries.js"></script>
-<script src="mpl_data.js"></script>
-<script src="app.js"></script>
+  <script src="./app.js"></script>
 
 </body>
-</html>
+
+        </html>
