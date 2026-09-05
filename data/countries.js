@@ -1,20 +1,63 @@
+/* =========================================================
+   MLBB PRO MANAGER
+   COUNTRIES / REGIONS
+   ========================================================= */
+
 const countries = [
+
   {
-    id: "id",
+    id: "ID",
     name: "Indonesia",
     flag: "🇮🇩",
-    leagues: ["mpl-id"]
+    description: "Mobile Legends Indonesia"
   },
+
   {
-    id: "ph",
+    id: "PH",
     name: "Philippines",
     flag: "🇵🇭",
-    leagues: ["mpl-ph"]
+    description: "Mobile Legends Philippines"
   },
+
   {
-    id: "kh",
+    id: "MY",
+    name: "Malaysia",
+    flag: "🇲🇾",
+    description: "Malaysia"
+  },
+
+  {
+    id: "SG",
+    name: "Singapore",
+    flag: "🇸🇬",
+    description: "Singapore"
+  },
+
+  {
+    id: "KH",
     name: "Cambodia",
     flag: "🇰🇭",
-    leagues: ["mpl-kh"]
-  }
+    description: "Cambodia"
+  },
+
+  {
+    id: "MM",
+    name: "Myanmar",
+    flag: "🇲🇲",
+    description: "Myanmar"
+  },
+
+  {
+    id: "BR",
+    name: "Brazil",
+    flag: "🇧🇷",
+    description: "Brazil"
+  },
+
+  {
+    id: "LATAM",
+    name: "Latin America",
+    flag: "🌎",
+    description: "Latin America"
+  ]
 ];
