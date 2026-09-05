@@ -1,9 +1,15 @@
 /* =========================================================
    MLBB PRO MANAGER
-   COUNTRIES / REGIONS
+   COUNTRIES / REGIONS V1.5
    ========================================================= */
 
-const countries = [
+"use strict";
+
+const countries = window.MLBB_COUNTRIES || [];
+
+const SAVE_KEY = "mlbb_pro_manager_save_v15";
+
+window.MLBB_COUNTRIES = [
 
   {
     id: "ID",
@@ -23,41 +29,48 @@ const countries = [
     id: "MY",
     name: "Malaysia",
     flag: "🇲🇾",
-    description: "Malaysia"
+    description: "Mobile Legends Malaysia"
   },
 
   {
     id: "SG",
     name: "Singapore",
     flag: "🇸🇬",
-    description: "Singapore"
+    description: "Mobile Legends Singapore"
   },
 
   {
     id: "KH",
     name: "Cambodia",
     flag: "🇰🇭",
-    description: "Cambodia"
+    description: "Mobile Legends Cambodia"
   },
 
   {
     id: "MM",
     name: "Myanmar",
     flag: "🇲🇲",
-    description: "Myanmar"
+    description: "Mobile Legends Myanmar"
   },
 
   {
     id: "BR",
     name: "Brazil",
     flag: "🇧🇷",
-    description: "Brazil"
+    description: "Mobile Legends Brazil"
   },
 
   {
     id: "LATAM",
     name: "Latin America",
     flag: "🌎",
-    description: "Latin America"
-  ]
+    description: "Mobile Legends Latin America"
+  }
+
 ];
+
+console.log(
+  "[MLBB PM] countries.js loaded:",
+  window.MLBB_COUNTRIES.length,
+  "regions"
+);
