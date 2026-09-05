@@ -1,72 +1,47 @@
-/* =========================================================
-   MLBB PRO MANAGER
-   V0.5
-   MOBILE FIRST
-========================================================= */
+:root {
+  --bg: #070b12;
+  --bg2: #0d131d;
+  --card: #111925;
+  --card2: #172231;
+  --border: #253247;
+  --text: #f5f7fb;
+  --muted: #8d9aad;
+  --accent: #f2c94c;
+  --green: #36d399;
+  --red: #ff5c70;
+  --blue: #4da3ff;
+  --radius: 16px;
+}
 
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:root {
-  --bg: #09090d;
-  --bg2: #111116;
-  --card: #17171e;
-  --card2: #1d1d25;
-
-  --text: #ffffff;
-  --muted: #9696a5;
-
-  --border: #2b2b35;
-
-  --accent: #f4c430;
-  --accent-dark: #a77e00;
-
-  --green: #43d17b;
-  --red: #ff5757;
-
-  --radius: 16px;
 }
 
 html {
   background: var(--bg);
-  color: var(--text);
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
 }
 
 body {
-  min-height: 100vh;
+  margin: 0;
+  padding: 0;
   background:
-    radial-gradient(
-      circle at top,
-      #1b1b23 0%,
-      #09090d 48%
-    );
+    radial-gradient(circle at top, #162236 0%, var(--bg) 45%);
   color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
 }
 
 button {
-  font: inherit;
+  font-family: inherit;
 }
-
-button:active {
-  transform: scale(0.98);
-}
-
-
-/* =========================================================
-   SCREEN
-========================================================= */
 
 .screen {
   display: block;
-  min-height: 100vh;
   width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  max-width: 700px;
+  margin: auto;
 }
 
 .screen.hidden {
@@ -74,867 +49,874 @@ button:active {
 }
 
 
-/* =========================================================
-   CONTAINER
-========================================================= */
+/* =========================
+   HEADERS
+========================= */
 
-.page-container {
-  width: 100%;
-  max-width: 680px;
-  margin: auto;
-  padding: 30px 18px 50px;
+.top-header {
+  padding: 30px 5px 20px;
 }
 
-.dashboard-container {
-  width: 100%;
-  max-width: 760px;
-  margin: auto;
-  padding: 18px 16px 50px;
+.top-header h1 {
+  margin: 8px 0 5px;
+  font-size: 28px;
 }
 
-
-/* =========================================================
-   START PAGE
-========================================================= */
-
-.start-page {
-  padding-top: 55px;
-}
-
-.game-logo {
-  text-align: center;
-  margin-bottom: 48px;
-}
-
-.logo-main {
-  font-size: 54px;
-  font-weight: 900;
-  letter-spacing: -4px;
-  line-height: 0.9;
-}
-
-.logo-sub {
-  margin-top: 8px;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 6px;
-  color: var(--accent);
+.top-header p,
+.page-header p,
+.dashboard-header p {
+  margin: 0;
+  color: var(--muted);
 }
 
 .version {
   display: inline-block;
-  margin-top: 14px;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.intro-text {
-  margin-bottom: 28px;
-}
-
-.intro-text h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.intro-text p {
-  color: var(--muted);
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.section-label {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(242, 201, 76, 0.12);
   color: var(--accent);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: bold;
 }
 
-
-/* =========================================================
-   HEADERS
-========================================================= */
-
-.screen-header {
+.page-header {
   display: flex;
+  align-items: center;
   gap: 14px;
-  align-items: flex-start;
-  margin-bottom: 28px;
+  margin: 10px 0 25px;
 }
 
-.screen-header h1 {
-  font-size: 26px;
-  margin-top: 2px;
+.page-header h2 {
+  margin: 0 0 5px;
+  font-size: 22px;
 }
 
-.subtitle {
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 7px;
-  line-height: 1.5;
-}
-
-.back-button {
+.back-btn {
   width: 42px;
   height: 42px;
-
-  flex-shrink: 0;
-
   border: 1px solid var(--border);
   border-radius: 12px;
-
   background: var(--card);
-  color: var(--text);
-
+  color: white;
   font-size: 22px;
-
-  cursor: pointer;
-}
-
-.back-button:hover {
-  border-color: var(--accent);
 }
 
 
-/* =========================================================
-   SELECTION LIST
-========================================================= */
+/* =========================
+   COUNTRY / LEAGUE / TEAM
+========================= */
 
-.selection-list {
+.card-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-
-/* COUNTRY */
-
 .country-card,
 .league-card,
 .team-card {
   width: 100%;
-
-  min-height: 72px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 16px 18px;
-
   border: 1px solid var(--border);
+  background: linear-gradient(145deg, var(--card2), var(--card));
   border-radius: var(--radius);
-
-  background:
-    linear-gradient(
-      145deg,
-      var(--card2),
-      var(--card)
-    );
-
-  color: var(--text);
-
+  padding: 17px;
+  color: white;
   text-align: left;
-
   cursor: pointer;
-
-  transition:
-    0.2s ease;
+  transition: 0.15s;
 }
 
-.country-card:hover,
-.league-card:hover,
-.team-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
+.country-card:active,
+.league-card:active,
+.team-card:active,
+.management-btn:active,
+.primary-btn:active {
+  transform: scale(0.98);
 }
 
-.country-left {
+.country-main,
+.league-main,
+.team-main {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
 .country-flag {
-  font-size: 30px;
+  font-size: 34px;
 }
 
-.country-card strong,
-.league-card strong,
-.team-card strong {
-  font-size: 16px;
+.country-info,
+.league-info,
+.team-info {
+  flex: 1;
 }
 
-.country-card span,
-.league-card span,
-.team-card span {
+.country-info strong,
+.league-info strong,
+.team-info strong {
+  display: block;
+  font-size: 17px;
+  margin-bottom: 5px;
+}
+
+.country-info small,
+.league-info small,
+.team-info small {
   color: var(--muted);
-  font-size: 12px;
 }
 
-.card-arrow {
-  color: var(--accent);
+.arrow {
+  color: var(--muted);
   font-size: 20px;
 }
 
 
-/* =========================================================
-   TOP BAR
-========================================================= */
+/* =========================
+   DASHBOARD
+========================= */
 
-.top-bar {
+.dashboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-
-  margin-bottom: 18px;
+  align-items: center;
+  padding: 15px 0 20px;
 }
 
-.top-bar h1 {
+.dashboard-header h1 {
+  margin: 5px 0;
   font-size: 25px;
-  margin-top: 3px;
-}
-
-.top-subtitle {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 5px;
 }
 
 .small-label {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.4px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
-
-/* =========================================================
-   ICON BUTTON
-========================================================= */
-
-.icon-button {
+.icon-btn {
   width: 42px;
   height: 42px;
-
   border: 1px solid var(--border);
-  border-radius: 12px;
-
   background: var(--card);
-  color: var(--text);
+  color: white;
+  border-radius: 12px;
+  font-size: 20px;
+}
 
-  cursor: pointer;
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 15px;
+}
+
+.stat-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.stat-card strong {
   font-size: 18px;
 }
 
 
-/* =========================================================
-   DASHBOARD CARD
-========================================================= */
-
-.dashboard-card {
-  background:
-    linear-gradient(
-      145deg,
-      #1d1d25,
-      #121218
-    );
-
-  border: 1px solid var(--border);
-
-  border-radius: var(--radius);
-
-  padding: 14px;
-
-  margin-bottom: 26px;
-}
-
-.stat-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(3, 1fr);
-
-  gap: 8px;
-}
-
-.stat-box {
-  background: #101016;
-
-  border: 1px solid #24242d;
-
-  border-radius: 12px;
-
-  padding: 13px 9px;
-
-  text-align: center;
-}
-
-.stat-box span {
-  display: block;
-
-  color: var(--muted);
-
-  font-size: 9px;
-  font-weight: 800;
-
-  letter-spacing: 0.8px;
-
-  margin-bottom: 7px;
-}
-
-.stat-box strong {
-  display: block;
-
-  font-size: 14px;
-  color: var(--text);
-
-  word-break: break-word;
-}
-
-
-/* =========================================================
-   GAME SECTION
-========================================================= */
-
-.game-section {
-  margin-bottom: 28px;
-}
+/* =========================
+   SECTION
+========================= */
 
 .section-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  margin-bottom: 12px;
+  margin: 27px 0 12px;
 }
 
 .section-title h2 {
-  font-size: 19px;
-  margin-top: 4px;
+  margin: 0;
+  font-size: 18px;
+}
+
+.text-btn {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
 }
 
 
-/* =========================================================
-   GAME CARD
-========================================================= */
+/* =========================
+   NEXT MATCH
+========================= */
 
-.game-card {
-  background:
-    linear-gradient(
-      145deg,
-      #1c1c24,
-      #14141a
-    );
-
+.next-match-card {
+  background: linear-gradient(135deg, #172537, #101823);
   border: 1px solid var(--border);
-
   border-radius: var(--radius);
-
   padding: 18px;
 }
 
-.game-card h3 {
-  font-size: 18px;
-  line-height: 1.35;
-  margin-bottom: 5px;
-}
-
-.game-card p {
-  color: var(--muted);
-  font-size: 13px;
-  margin-bottom: 15px;
-}
-
-
-/* =========================================================
-   BUTTONS
-========================================================= */
-
-.primary-button,
-.secondary-button {
-  width: 100%;
-
-  min-height: 50px;
-
-  border-radius: 13px;
-
-  border: none;
-
-  font-weight: 900;
-
-  cursor: pointer;
-
-  transition: 0.2s ease;
-}
-
-.primary-button {
-  background: var(--accent);
-  color: #080808;
-}
-
-.primary-button:hover {
-  filter: brightness(1.08);
-}
-
-.secondary-button {
-  background: #18181f;
-  color: var(--text);
-
-  border: 1px solid var(--border);
-}
-
-.secondary-button:hover {
-  border-color: var(--accent);
-}
-
-.primary-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-
-/* =========================================================
-   ROSTER
-========================================================= */
-
-.match-player {
+.next-match-top {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
 
+.next-match-top span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.match-opponents {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-
-  gap: 12px;
-
-  background: var(--card);
-
-  border: 1px solid var(--border);
-
-  border-radius: 13px;
-
-  padding: 13px 14px;
-
-  margin-bottom: 8px;
-}
-
-.match-player strong {
-  font-size: 14px;
-}
-
-.match-player-role {
-  margin-top: 4px;
-
-  color: var(--muted);
-
-  font-size: 11px;
-}
-
-.player-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.player-rating {
-  font-size: 15px !important;
-  color: var(--accent);
-}
-
-.starter-button {
-  border: 1px solid var(--border);
-
-  background: #111117;
-
-  color: var(--muted);
-
-  border-radius: 8px;
-
-  padding: 7px 9px;
-
-  font-size: 10px;
-
-  font-weight: 800;
-
-  cursor: pointer;
-}
-
-.starter-button.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #080808;
-}
-
-
-/* =========================================================
-   STANDINGS
-========================================================= */
-
-.standing-row {
-  display: grid;
-
-  grid-template-columns:
-    35px 1fr 55px 60px;
-
-  align-items: center;
-
-  gap: 7px;
-
-  background: var(--card);
-
-  border: 1px solid var(--border);
-
-  border-radius: 11px;
-
-  padding: 12px;
-
-  margin-bottom: 7px;
-}
-
-.standing-rank {
-  color: var(--muted);
-
-  font-size: 12px;
-
-  font-weight: 800;
-}
-
-.standing-team {
-  min-width: 0;
-}
-
-.standing-team strong {
-  display: block;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-
-  white-space: nowrap;
-
-  font-size: 13px;
-}
-
-.standing-record {
-  color: var(--muted);
-
-  font-size: 10px;
-
-  margin-top: 3px;
-}
-
-.standing-points {
-  text-align: right;
-
-  font-weight: 900;
-
-  font-size: 13px;
-}
-
-.standing-gd {
-  text-align: right;
-
-  color: var(--muted);
-
-  font-size: 11px;
-}
-
-
-/* =========================================================
-   MENU
-========================================================= */
-
-.menu-grid {
-  display: grid;
-
-  grid-template-columns:
-    repeat(2, 1fr);
-
   gap: 10px;
 }
 
-.menu-button {
-  min-height: 95px;
+.opponent {
+  flex: 1;
+  text-align: center;
+}
 
+.opponent .mini-logo {
+  font-size: 28px;
+  margin-bottom: 7px;
+}
+
+.opponent strong {
+  display: block;
+  font-size: 14px;
+}
+
+.opponent small {
+  color: var(--muted);
+}
+
+.next-vs {
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.play-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 11px;
+  padding: 12px;
+  margin-top: 18px;
+  background: var(--accent);
+  color: #111;
+  font-weight: bold;
+}
+
+
+/* =========================
+   STARTING 5
+========================= */
+
+.starting-five {
   display: flex;
-
   flex-direction: column;
+  gap: 8px;
+}
 
-  justify-content: center;
-
+.starting-player {
+  display: flex;
   align-items: center;
-
-  gap: 9px;
-
+  gap: 10px;
   background: var(--card);
-
   border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 11px;
+}
 
+.role-badge {
+  min-width: 62px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: var(--card2);
+  color: var(--accent);
+  font-size: 10px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.player-name {
+  flex: 1;
+}
+
+.player-name strong {
+  display: block;
+  font-size: 14px;
+}
+
+.player-name small {
+  color: var(--muted);
+}
+
+.player-rating {
+  font-weight: bold;
+}
+
+
+/* =========================
+   MANAGEMENT
+========================= */
+
+.management-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.management-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: white;
   border-radius: 14px;
-
-  color: var(--text);
-
-  font-weight: 800;
-
+  padding: 16px;
+  text-align: left;
   cursor: pointer;
 }
 
-.menu-button:hover {
+.management-btn span {
+  display: block;
+  font-size: 25px;
+  margin-bottom: 10px;
+}
+
+.management-btn strong {
+  display: block;
+  font-size: 15px;
+}
+
+.management-btn small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+
+/* =========================
+   STANDINGS
+========================= */
+
+.standings {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.standings table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 440px;
+}
+
+.standings th {
+  padding: 11px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  background: var(--card2);
+}
+
+.standings td {
+  padding: 12px 8px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  text-align: center;
+}
+
+.standings td:nth-child(2) {
+  text-align: left;
+}
+
+.my-team-row {
+  background: rgba(242, 201, 76, 0.09);
+}
+
+.rank {
+  color: var(--muted);
+}
+
+
+/* =========================
+   BUTTON
+========================= */
+
+.primary-btn {
+  width: 100%;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--accent);
+  color: #111;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+
+/* =========================
+   ROSTER
+========================= */
+
+.roster-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.roster-summary > div {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.roster-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+
+.roster-summary strong {
+  font-size: 14px;
+}
+
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.player-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-avatar {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--card2);
+  font-size: 22px;
+}
+
+.player-main {
+  flex: 1;
+}
+
+.player-main strong {
+  display: block;
+  font-size: 15px;
+}
+
+.player-main small {
+  color: var(--muted);
+}
+
+.rating-box {
+  text-align: right;
+}
+
+.rating-box strong {
+  display: block;
+  font-size: 17px;
+}
+
+.rating-box small {
+  color: var(--muted);
+}
+
+.player-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.player-detail {
+  background: var(--bg2);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.player-detail span {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.player-detail strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.player-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.action-btn {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--card2);
+  color: white;
+  padding: 10px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.buy-btn {
+  background: var(--accent);
+  color: #111;
   border-color: var(--accent);
 }
 
-.menu-icon {
-  font-size: 25px;
+.sell-btn {
+  color: var(--red);
 }
 
 
-/* =========================================================
-   MATCH SCREEN
-========================================================= */
+/* =========================
+   TRANSFER
+========================= */
+
+.market-budget {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #172537, #111925);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.market-budget span {
+  color: var(--muted);
+}
+
+.market-budget strong {
+  color: var(--accent);
+}
+
+.filter-row {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-btn {
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  border-radius: 9px;
+  padding: 8px 12px;
+}
+
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #111;
+  font-weight: bold;
+}
+
+
+/* =========================
+   SCHEDULE
+========================= */
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px;
+}
+
+.match-number {
+  min-width: 35px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.schedule-opponent {
+  flex: 1;
+}
+
+.schedule-opponent strong {
+  display: block;
+}
+
+.schedule-opponent small {
+  color: var(--muted);
+}
+
+.schedule-status {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-win {
+  color: var(--green);
+}
+
+.status-loss {
+  color: var(--red);
+}
+
+.status-pending {
+  color: var(--accent);
+}
+
+
+/* =========================
+   SCOUTING
+========================= */
+
+.scouting-info {
+  background: rgba(77, 163, 255, 0.1);
+  border: 1px solid rgba(77, 163, 255, 0.3);
+  color: #b8d9ff;
+  padding: 13px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+/* =========================
+   MATCH
+========================= */
 
 .match-header {
-  display: flex;
-
-  gap: 14px;
-
-  align-items: center;
-
-  margin-bottom: 18px;
+  text-align: center;
+  padding: 30px 0 20px;
 }
 
 .match-header h1 {
-  font-size: 23px;
+  margin: 8px 0;
+  font-size: 25px;
 }
 
-.match-info {
-  text-align: center;
-
+.match-header p {
   color: var(--muted);
-
-  font-size: 12px;
-
-  margin-bottom: 22px;
+  margin: 0;
 }
 
-.match-teams {
-  display: grid;
-
-  grid-template-columns:
-    1fr 55px 1fr;
-
+.match-versus {
+  display: flex;
   align-items: center;
-
-  gap: 8px;
-
-  margin-bottom: 18px;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 12px;
 }
 
 .match-team {
+  flex: 1;
   text-align: center;
-
-  min-width: 0;
 }
 
-.team-logo {
-  width: 68px;
-  height: 68px;
-
+.team-logo-placeholder {
+  width: 65px;
+  height: 65px;
+  margin: auto auto 10px;
   display: flex;
-
   align-items: center;
   justify-content: center;
-
-  margin: 0 auto 10px;
-
   border-radius: 18px;
-
-  background:
-    linear-gradient(
-      145deg,
-      #292933,
-      #15151b
-    );
-
-  border: 1px solid var(--border);
-
-  color: var(--accent);
-
-  font-size: 14px;
-
-  font-weight: 900;
+  background: var(--card2);
+  font-size: 28px;
 }
 
 .match-team h2 {
   font-size: 14px;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-
-  white-space: nowrap;
+  margin: 8px 0;
 }
 
-.team-rating {
-  margin-top: 6px;
+.match-team strong {
+  display: block;
+  font-size: 20px;
+}
 
+.match-team small {
   color: var(--muted);
-
-  font-size: 11px;
 }
 
-.match-vs {
-  text-align: center;
-
-  font-weight: 900;
-
+.vs {
+  font-weight: bold;
   color: var(--accent);
-
-  font-size: 15px;
 }
 
-.match-probability {
-  display: flex;
-
-  justify-content: space-between;
-
-  align-items: center;
-
-  padding: 16px;
-
-  margin-bottom: 24px;
-
-  background: var(--card);
-
-  border: 1px solid var(--border);
-
-  border-radius: 13px;
-}
-
-.match-probability span {
-  color: var(--muted);
-
-  font-size: 10px;
-
-  font-weight: 800;
-}
-
-.match-probability strong {
-  color: var(--accent);
-
-  font-size: 25px;
-}
-
-
-/* =========================================================
-   MATCH RESULT
-========================================================= */
-
-.match-result {
+.win-chance {
   margin-top: 18px;
-
-  padding: 24px 18px;
-
-  border-radius: var(--radius);
-
-  text-align: center;
-
-  border: 1px solid var(--border);
-
   background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 15px;
 }
 
-.match-result h2 {
-  font-size: 25px;
-
-  margin-bottom: 10px;
-}
-
-.match-result p {
+.win-chance > span {
   color: var(--muted);
+  font-size: 12px;
+}
 
-  font-size: 13px;
+.win-chance strong {
+  float: right;
+}
 
-  line-height: 1.5;
+.progress {
+  clear: both;
+  height: 7px;
+  background: var(--bg2);
+  border-radius: 10px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 50%;
+  background: var(--accent);
+  border-radius: 10px;
+  transition: width 0.3s;
+}
+
+.match-lineup {
+  margin-top: 20px;
+}
+
+.match-lineup h3 {
+  font-size: 16px;
+}
+
+#matchStartingFive {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+
+/* =========================
+   RESULT
+========================= */
+
+#resultScreen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  align-items: center;
+}
+
+.result-icon {
+  font-size: 70px;
+  margin-bottom: 20px;
+}
+
+#resultTitle {
+  font-size: 32px;
+  margin: 0;
 }
 
 .result-score {
-  font-size: 48px;
-
-  font-weight: 900;
-
-  margin: 16px 0;
+  font-size: 52px;
+  font-weight: bold;
+  margin: 15px 0;
 }
 
-.result-win {
-  border-color: rgba(
-    67,
-    209,
-    123,
-    0.5
-  );
+#resultDescription {
+  color: var(--muted);
+  max-width: 400px;
+  line-height: 1.5;
 }
 
-.result-win .result-score {
-  color: var(--green);
+.result-rewards {
+  width: 100%;
+  max-width: 400px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
 }
 
-.result-loss {
-  border-color: rgba(
-    255,
-    87,
-    87,
-    0.5
-  );
+.result-rewards div {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 15px;
 }
 
-.result-loss .result-score {
-  color: var(--red);
+.result-rewards span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 7px;
 }
 
-.match-result .primary-button {
-  margin-top: 18px;
-}
-
-
-/* =========================================================
-   FOOTER
-========================================================= */
-
-.footer-note {
-  text-align: center;
-
-  color: #555560;
-
-  font-size: 10px;
-
-  margin-top: 30px;
+.result-rewards strong {
+  font-size: 15px;
 }
 
 
-/* =========================================================
-   RESPONSIVE
-========================================================= */
+/* =========================
+   DESKTOP
+========================= */
 
-@media (min-width: 600px) {
+@media (min-width: 700px) {
 
-  .page-container {
-    padding-top: 70px;
+  .screen {
+    padding: 30px;
   }
 
-  .logo-main {
-    font-size: 70px;
-  }
-
-  .menu-grid {
-    grid-template-columns:
-      repeat(4, 1fr);
-  }
-
-  .menu-button {
-    min-height: 110px;
+  .management-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 
 }
