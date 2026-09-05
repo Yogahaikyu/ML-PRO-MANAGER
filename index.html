@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
   <meta charset="UTF-8">
@@ -9,213 +9,137 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
   >
 
-  <meta
-    name="theme-color"
-    content="#111111"
-  >
+  <meta name="theme-color" content="#070a12">
 
   <title>MLBB Pro Manager</title>
 
-  <link
-    rel="stylesheet"
-    href="style.css"
-  >
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <!-- =====================================================
-       COUNTRY SCREEN
-  ====================================================== -->
+  <!-- COUNTRY -->
 
-  <section
-    id="countryScreen"
-    class="screen"
-  >
+  <section id="countryScreen" class="screen">
 
     <div class="page-container">
 
       <div class="game-logo">
-        <h1>MLBB</h1>
-        <p>PRO MANAGER</p>
+        <div class="logo-main">MLBB</div>
+        <div class="logo-sub">PRO MANAGER</div>
       </div>
 
-      <h2>Select Country</h2>
+      <div class="small-label">NEW CAREER</div>
+
+      <h1>Select Country</h1>
 
       <p class="subtitle">
-        Choose the country where you want to start your career.
+        Pilih negara tempat kamu ingin memulai karier sebagai manager.
       </p>
 
-      <div
-        id="countryList"
-        class="selection-list"
-      ></div>
+      <div id="countryList" class="selection-list"></div>
 
     </div>
 
   </section>
 
 
-  <!-- =====================================================
-       LEAGUE SCREEN
-  ====================================================== -->
+  <!-- LEAGUE -->
 
-  <section
-    id="leagueScreen"
-    class="screen hidden"
-  >
+  <section id="leagueScreen" class="screen hidden">
 
     <div class="page-container">
 
-      <div class="screen-header">
+      <button
+        class="back-button"
+        onclick="showScreen('countryScreen')"
+      >
+        ← Kembali
+      </button>
 
-        <button
-          class="back-button"
-          onclick="showScreen('countryScreen')"
-        >
-          ←
-        </button>
+      <div class="small-label">STEP 2</div>
 
-        <div>
-          <h1>Select League</h1>
-          <p class="subtitle">
-            Choose your league.
-          </p>
-        </div>
+      <h1>Select League</h1>
 
-      </div>
+      <p class="subtitle">
+        Pilih liga tempat kamu ingin berkompetisi.
+      </p>
 
-      <div
-        id="leagueList"
-        class="selection-list"
-      ></div>
+      <div id="leagueList" class="selection-list"></div>
 
     </div>
 
   </section>
 
 
-  <!-- =====================================================
-       TEAM SCREEN
-  ====================================================== -->
+  <!-- TEAM -->
 
-  <section
-    id="teamScreen"
-    class="screen hidden"
-  >
+  <section id="teamScreen" class="screen hidden">
 
     <div class="page-container">
 
-      <div class="screen-header">
+      <button
+        class="back-button"
+        onclick="showScreen('leagueScreen')"
+      >
+        ← Kembali
+      </button>
 
-        <button
-          class="back-button"
-          onclick="showScreen('leagueScreen')"
-        >
-          ←
-        </button>
+      <div class="small-label">STEP 3</div>
 
-        <div>
-          <h1>Select Team</h1>
+      <h1>Select Team</h1>
 
-          <p class="subtitle">
-            Choose the team you want to manage.
-          </p>
-        </div>
+      <p class="subtitle">
+        Pilih tim yang ingin kamu kelola.
+      </p>
 
-      </div>
-
-      <div
-        id="teamList"
-        class="selection-list"
-      ></div>
+      <div id="teamList" class="selection-list"></div>
 
     </div>
 
   </section>
 
 
-  <!-- =====================================================
-       DASHBOARD
-  ====================================================== -->
+  <!-- DASHBOARD -->
 
-  <section
-    id="dashboardScreen"
-    class="screen hidden"
-  >
+  <section id="dashboardScreen" class="screen hidden">
 
     <div class="dashboard-container">
-
-
-      <!-- TOP BAR -->
 
       <header class="top-bar">
 
         <div>
-
-          <div class="small-label">
-            TEAM
-          </div>
-
-          <h1 id="teamName">
-            MLBB Team
-          </h1>
-
+          <div class="small-label">TEAM</div>
+          <h1 id="teamName">MLBB Team</h1>
         </div>
 
         <button
           class="icon-button"
           onclick="restartGame()"
-          title="Restart Game"
         >
-          ⚙
+          ↻
         </button>
 
       </header>
 
-
-      <!-- SEASON INFO -->
 
       <section class="dashboard-card">
 
         <div class="stat-grid">
 
           <div class="stat-box">
-
-            <span>
-              SEASON
-            </span>
-
-            <strong id="seasonYear">
-              2026
-            </strong>
-
+            <span>SEASON</span>
+            <strong id="seasonYear">2026</strong>
           </div>
 
-
           <div class="stat-box">
-
-            <span>
-              BUDGET
-            </span>
-
-            <strong id="budget">
-              Rp 500.000
-            </strong>
-
+            <span>BUDGET</span>
+            <strong id="budget">Rp 500.000</strong>
           </div>
 
-
           <div class="stat-box">
-
-            <span>
-              REPUTATION
-            </span>
-
-            <strong id="reputation">
-              50
-            </strong>
-
+            <span>REPUTATION</span>
+            <strong id="reputation">50</strong>
           </div>
 
         </div>
@@ -227,18 +151,11 @@
 
       <section class="game-section">
 
-        <div class="section-title">
-
+        <div class="section-heading">
           <div>
-            <span class="small-label">
-              MATCHDAY
-            </span>
-
-            <h2>
-              Next Match
-            </h2>
+            <div class="small-label">MATCHDAY</div>
+            <h2>Next Match</h2>
           </div>
-
         </div>
 
         <div id="nextMatch"></div>
@@ -250,18 +167,11 @@
 
       <section class="game-section">
 
-        <div class="section-title">
-
+        <div class="section-heading">
           <div>
-            <span class="small-label">
-              TEAM
-            </span>
-
-            <h2>
-              Starting 5 / Roster
-            </h2>
+            <div class="small-label">TEAM</div>
+            <h2>Starting 5 / Roster</h2>
           </div>
-
         </div>
 
         <div id="rosterContainer"></div>
@@ -273,19 +183,11 @@
 
       <section class="game-section">
 
-        <div class="section-title">
-
+        <div class="section-heading">
           <div>
-            <span class="small-label">
-              LEAGUE
-            </span>
-
-            <h2>
-              League Standings
-            </h2>
-
+            <div class="small-label">LEAGUE</div>
+            <h2>League Standings</h2>
           </div>
-
         </div>
 
         <div id="standingsContainer"></div>
@@ -297,104 +199,57 @@
 
       <section class="game-section">
 
-        <div class="section-title">
-
+        <div class="section-heading">
           <div>
-            <span class="small-label">
-              MANAGEMENT
-            </span>
-
-            <h2>
-              Manager Menu
-            </h2>
-
+            <div class="small-label">MANAGEMENT</div>
+            <h2>Manager Menu</h2>
           </div>
-
         </div>
-
 
         <div class="menu-grid">
 
-
           <button
-            id="menuRoster"
             class="menu-button"
             onclick="renderRoster()"
           >
-
-            <span class="menu-icon">
-              👥
-            </span>
-
-            <span>
-              Roster
-            </span>
-
+            <span>👥</span>
+            <strong>Roster</strong>
           </button>
 
-
           <button
-            id="menuTransfer"
             class="menu-button"
             onclick="showTransferMarket()"
           >
-
-            <span class="menu-icon">
-              💰
-            </span>
-
-            <span>
-              Transfer
-            </span>
-
+            <span>💰</span>
+            <strong>Transfer</strong>
           </button>
 
-
           <button
-            id="menuSchedule"
             class="menu-button"
             onclick="showSchedule()"
           >
-
-            <span class="menu-icon">
-              📅
-            </span>
-
-            <span>
-              Schedule
-            </span>
-
+            <span>📅</span>
+            <strong>Schedule</strong>
           </button>
 
-
           <button
-            id="menuScouting"
             class="menu-button"
             onclick="showScouting()"
           >
-
-            <span class="menu-icon">
-              🔎
-            </span>
-
-            <span>
-              Scouting
-            </span>
-
+            <span>🔎</span>
+            <strong>Scouting</strong>
           </button>
-
 
         </div>
 
       </section>
 
 
-      <!-- SEASON CONTROL -->
+      <!-- ADVANCE -->
 
       <section class="game-section">
 
         <button
-          id="advanceSeasonButton"
           class="secondary-button"
           onclick="advanceSeason()"
         >
@@ -403,25 +258,16 @@
 
       </section>
 
-
     </div>
 
   </section>
 
 
-  <!-- =====================================================
-       MATCH SCREEN
-  ====================================================== -->
+  <!-- MATCH -->
 
-  <section
-    id="matchScreen"
-    class="screen hidden"
-  >
+  <section id="matchScreen" class="screen hidden">
 
     <div class="dashboard-container">
-
-
-      <!-- MATCH HEADER -->
 
       <header class="match-header">
 
@@ -429,104 +275,64 @@
           class="back-button"
           onclick="backToDashboard()"
         >
-          ←
+          ← Kembali
         </button>
 
         <div>
-
-          <div class="small-label">
-            SEASON MATCH
-          </div>
-
-          <h1>
-            BO3 MATCH
-          </h1>
-
+          <div class="small-label">SEASON MATCH</div>
+          <h1>BO3 MATCH</h1>
         </div>
 
       </header>
 
 
-      <!-- MATCH INFO -->
-
-      <div
-        id="matchInfo"
-        class="match-info"
-      >
-
-        <span>
-          Regular Season
-        </span>
-
+      <div id="matchInfo" class="match-info">
+        Regular Season
       </div>
 
 
-      <!-- TEAMS -->
-
       <div class="match-teams">
 
+        <div class="match-team">
 
-        <!-- MY TEAM -->
-
-        <div class="match-team my-team">
-
-          <div class="team-logo">
-            YOU
-          </div>
+          <div class="team-logo">YOU</div>
 
           <h2 id="myTeamName">
             Your Team
           </h2>
 
-          <div
-            id="myTeamRating"
-            class="team-rating"
-          >
+          <div id="myTeamRating" class="team-rating">
             Rating: 0
           </div>
 
         </div>
 
-
-        <!-- VS -->
 
         <div class="match-vs">
           VS
         </div>
 
 
-        <!-- ENEMY -->
+        <div class="match-team">
 
-        <div class="match-team enemy-team">
-
-          <div class="team-logo">
-            AI
-          </div>
+          <div class="team-logo">AI</div>
 
           <h2 id="enemyTeamName">
             Enemy
           </h2>
 
-          <div
-            id="enemyTeamRating"
-            class="team-rating"
-          >
+          <div id="enemyTeamRating" class="team-rating">
             Rating: 0
           </div>
 
         </div>
 
-
       </div>
 
 
-      <!-- WIN PROBABILITY -->
-
       <div class="match-probability">
 
-        <span>
-          YOUR WIN CHANCE
-        </span>
+        <span>YOUR WIN CHANCE</span>
 
         <strong id="winProbability">
           50%
@@ -535,22 +341,13 @@
       </div>
 
 
-      <!-- STARTING FIVE -->
-
       <section class="game-section">
 
-        <div class="section-title">
+        <div class="section-heading">
 
           <div>
-
-            <span class="small-label">
-              LINEUP
-            </span>
-
-            <h2>
-              Starting 5
-            </h2>
-
+            <div class="small-label">LINEUP</div>
+            <h2>Starting 5</h2>
           </div>
 
         </div>
@@ -559,8 +356,6 @@
 
       </section>
 
-
-      <!-- PLAY BUTTON -->
 
       <button
         id="playMatchButton"
@@ -571,39 +366,26 @@
       </button>
 
 
-      <!-- RESULT -->
-
       <div
         id="matchResult"
         class="hidden"
       ></div>
-
 
     </div>
 
   </section>
 
 
-  <!-- =====================================================
-       JAVASCRIPT DATA
-  ====================================================== -->
+  <!-- DATA -->
 
   <script src="data/countries.js"></script>
-
   <script src="data/mpl-id.js"></script>
-
   <script src="data/mpl-ph.js"></script>
-
   <script src="data/mpl-kh.js"></script>
 
-
-  <!-- =====================================================
-       MAIN GAME
-  ====================================================== -->
+  <!-- GAME -->
 
   <script src="app.js"></script>
 
-
 </body>
-
-              </html>
+</html>
