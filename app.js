@@ -1,13 +1,13 @@
 /* =========================================================
    MLBB PRO MANAGER
-   V0.9 FIX
+   V0.9 FIXED
    ========================================================= */
 
 const SAVE_KEY = "mlbb_pro_manager_save_v09";
 
 let selectedTarget = "top3";
 
-let game = {
+const DEFAULT_GAME = {
   version: 9,
 
   year: 2026,
@@ -37,31 +37,52 @@ let game = {
 
   careerStarted: false,
 
+  seasonComplete: false,
+  phase: "regular",
+
   world: {
     ranking: [],
+
     msc: {
       qualified: false,
       completed: false,
       champion: null,
+      championId: null,
+      teams: [],
       matches: [],
-      teams: []
+      round: 1
     },
+
     mSeries: {
       qualified: false,
       completed: false,
       champion: null,
+      championId: null,
+      teams: [],
       matches: [],
-      teams: []
+      round: 1
     }
   },
 
   history: []
 };
 
+let game = deepClone(DEFAULT_GAME);
+
 
 /* =========================================================
    BASIC HELPERS
    ========================================================= */
+
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+
+function el(id) {
+  return document.getElementById(id);
+}
+
 
 function showScreen(id) {
 
@@ -69,7 +90,7 @@ function showScreen(id) {
     screen.classList.remove("active");
   });
 
-  const target = document.getElementById(id);
+  const target = el(id);
 
   if (target) {
     target.classList.add("active");
@@ -99,7 +120,9 @@ function clamp(value, min, max) {
 
 
 function random(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(
+    Math.random() * (max - min + 1)
+  ) + min;
 }
 
 
@@ -116,27 +139,48 @@ function getTargetName(target) {
 }
 
 
+/* =========================================================
+   DATA
+   ========================================================= */
+
 function getAllLeagues() {
 
-  return [
-    MPL_ID_2026,
-    MPL_PH_2026,
-    MPL_KH_2026
-  ];
+  const leagues = [];
+
+  if (typeof MPL_ID_2026 !== "undefined") {
+    leagues.push(MPL_ID_2026);
+  }
+
+  if (typeof MPL_PH_2026 !== "undefined") {
+    leagues.push(MPL_PH_2026);
+  }
+
+  if (typeof MPL_KH_2026 !== "undefined") {
+    leagues.push(MPL_KH_2026);
+  }
+
+  return leagues;
 }
 
 
 function getLeagueById(id) {
 
-  return getAllLeagues().find(league => league.id === id);
+  return getAllLeagues().find(
+    league => league.id === id
+  );
 }
 
 
 function getTeamSource(teamId) {
 
+  if (!teamId) return null;
+
   for (const league of getAllLeagues()) {
 
-    const team = league.teams.find(t => t.id === teamId);
+    const team =
+      league.teams.find(
+        t => t.id === teamId
+      );
 
     if (team) {
 
@@ -146,40 +190,112 @@ function getTeamSource(teamId) {
       };
 
     }
-
   }
 
   return null;
 }
 
 
+/*
+  PENTING:
+  Team milik user disimpan sebagai object sendiri.
+  Jadi database asli tidak ikut berubah.
+*/
+
 function getCurrentTeam() {
 
-  const source = getTeamSource(game.team);
+  if (
+    game.currentTeamData &&
+    game.currentTeamData.id === game.team
+  ) {
+    return game.currentTeamData;
+  }
 
-  return source ? source.team : null;
+  const source =
+    getTeamSource(game.team);
+
+  if (!source) return null;
+
+  game.currentTeamData =
+    deepClone(source.team);
+
+  game.currentTeamData.players =
+    game.currentTeamData.players || [];
+
+  game.currentTeamData.players.forEach(
+    player => {
+
+      if (player.contractYears == null) {
+        player.contractYears = 2;
+      }
+
+      if (player.morale == null) {
+        player.morale = 70;
+      }
+
+    }
+  );
+
+  return game.currentTeamData;
 }
 
 
 function getCurrentLeague() {
-
   return getLeagueById(game.league);
 }
 
 
 function getCurrentTeamName() {
 
-  const team = getCurrentTeam();
+  const team =
+    getCurrentTeam();
 
-  return team ? team.name : "-";
+  return team
+    ? team.name
+    : "-";
 }
 
 
 function getCurrentLeagueName() {
 
-  const league = getCurrentLeague();
+  const league =
+    getCurrentLeague();
 
-  return league ? league.name : "-";
+  return league
+    ? league.name
+    : "-";
+}
+
+
+function getTeamDisplayName(teamId) {
+
+  if (
+    teamId === game.team
+  ) {
+    return getCurrentTeamName();
+  }
+
+  const source =
+    getTeamSource(teamId);
+
+  return source
+    ? source.team.name
+    : "-";
+}
+
+
+function getTeamPlayers(teamId) {
+
+  if (
+    teamId === game.team
+  ) {
+    return getCurrentTeam()?.players || [];
+  }
+
+  const source =
+    getTeamSource(teamId);
+
+  return source?.team.players || [];
 }
 
 
@@ -189,7 +305,8 @@ function getCurrentLeagueName() {
 
 function renderCountries() {
 
-  const container = document.getElementById("countryList");
+  const container =
+    el("countryList");
 
   if (!container) return;
 
@@ -197,20 +314,27 @@ function renderCountries() {
 
   countries.forEach(country => {
 
-    const button = document.createElement("button");
+    const button =
+      document.createElement("button");
 
-    button.className = "country-btn";
+    button.className =
+      "country-btn";
 
     button.innerHTML = `
-      <div class="country-flag">${country.flag}</div>
+      <div class="country-flag">
+        ${country.flag}
+      </div>
 
       <div class="country-info">
         <strong>${country.name}</strong>
-        <span>${country.leagues.length} league tersedia</span>
+        <span>
+          ${country.leagues.length} league tersedia
+        </span>
       </div>
     `;
 
-    button.onclick = () => selectCountry(country.id);
+    button.onclick = () =>
+      selectCountry(country.id);
 
     container.appendChild(button);
 
@@ -221,70 +345,101 @@ function renderCountries() {
 
 function selectCountry(countryId) {
 
-  const country = countries.find(c => c.id === countryId);
+  const country =
+    countries.find(
+      c => c.id === countryId
+    );
 
   if (!country) return;
 
-  game.country = country.id;
+  game.country =
+    country.id;
 
-  document.getElementById("leagueCountryTitle").textContent =
-    `${country.flag} ${country.name}`;
+  const title =
+    el("leagueCountryTitle");
+
+  if (title) {
+
+    title.textContent =
+      `${country.flag} ${country.name}`;
+
+  }
 
   renderLeagues();
 
   showScreen("leagueScreen");
+
 }
 
 
 function renderLeagues() {
 
-  const container = document.getElementById("leagueList");
+  const container =
+    el("leagueList");
 
   if (!container) return;
 
   container.innerHTML = "";
 
-  const country = countries.find(c => c.id === game.country);
+  const country =
+    countries.find(
+      c => c.id === game.country
+    );
 
   if (!country) return;
 
-  country.leagues.forEach(leagueId => {
+  country.leagues.forEach(
+    leagueId => {
 
-    const league = getLeagueById(leagueId);
+      const league =
+        getLeagueById(leagueId);
 
-    if (!league) return;
+      if (!league) return;
 
-    const button = document.createElement("button");
+      const button =
+        document.createElement("button");
 
-    button.className = "league-btn";
+      button.className =
+        "league-btn";
 
-    button.innerHTML = `
-      <div class="league-info">
-        <strong>${league.name}</strong>
-        <span>Season ${league.season} • ${league.teams.length} teams</span>
-      </div>
-    `;
+      button.innerHTML = `
+        <div class="league-info">
+          <strong>
+            ${league.name}
+          </strong>
 
-    button.onclick = () => selectLeague(league.id);
+          <span>
+            Season ${league.season}
+            • ${league.teams.length} teams
+          </span>
+        </div>
+      `;
 
-    container.appendChild(button);
+      button.onclick = () =>
+        selectLeague(league.id);
 
-  });
+      container.appendChild(button);
+
+    }
+  );
 
 }
 
 
 function selectLeague(leagueId) {
 
-  const league = getLeagueById(leagueId);
+  const league =
+    getLeagueById(leagueId);
 
   if (!league) return;
 
-  game.league = league.id;
+  game.league =
+    league.id;
 
   renderTeams();
 
   showScreen("teamScreen");
+
 }
 
 
@@ -294,32 +449,41 @@ function selectLeague(leagueId) {
 
 function renderTeams() {
 
-  const container = document.getElementById("teamList");
+  const container =
+    el("teamList");
 
   if (!container) return;
 
   container.innerHTML = "";
 
-  const league = getCurrentLeague();
+  const league =
+    getCurrentLeague();
 
   if (!league) return;
 
   league.teams.forEach(team => {
 
-    const rating = teamRating(team.id);
+    const button =
+      document.createElement("button");
 
-    const button = document.createElement("button");
-
-    button.className = "team-btn";
+    button.className =
+      "team-btn";
 
     button.innerHTML = `
       <div class="team-info">
-        <strong>${team.name}</strong>
-        <span>Team Rating: ${rating}</span>
+        <strong>
+          ${team.name}
+        </strong>
+
+        <span>
+          Team Rating:
+          ${teamRating(team.id)}
+        </span>
       </div>
     `;
 
-    button.onclick = () => selectTeam(team.id);
+    button.onclick = () =>
+      selectTeam(team.id);
 
     container.appendChild(button);
 
@@ -330,19 +494,46 @@ function renderTeams() {
 
 function selectTeam(teamId) {
 
-  const source = getTeamSource(teamId);
+  const source =
+    getTeamSource(teamId);
 
   if (!source) return;
 
-  game.team = teamId;
+  game.team =
+    teamId;
 
-  document.getElementById("managerName").value = "";
+  game.currentTeamData =
+    deepClone(source.team);
 
-  selectedTarget = "top3";
+  game.currentTeamData.players =
+    game.currentTeamData.players || [];
+
+  game.currentTeamData.players.forEach(
+    player => {
+
+      player.contractYears =
+        Number(player.contractYears || 2);
+
+      player.morale =
+        Number(player.morale || 70);
+
+    }
+  );
+
+  const manager =
+    el("managerName");
+
+  if (manager) {
+    manager.value = "";
+  }
+
+  selectedTarget =
+    "top3";
 
   updateTargetButtons();
 
   showScreen("managerSetupScreen");
+
 }
 
 
@@ -352,7 +543,8 @@ function selectTeam(teamId) {
 
 function selectTarget(target) {
 
-  selectedTarget = target;
+  selectedTarget =
+    target;
 
   updateTargetButtons();
 
@@ -361,13 +553,18 @@ function selectTarget(target) {
 
 function updateTargetButtons() {
 
-  document.querySelectorAll(".target-btn").forEach(button => {
-    button.classList.remove("selected");
-  });
+  document
+    .querySelectorAll(".target-btn")
+    .forEach(button => {
 
-  const button = document.getElementById(
-    `target-${selectedTarget}`
-  );
+      button.classList.remove(
+        "selected"
+      );
+
+    });
+
+  const button =
+    el(`target-${selectedTarget}`);
 
   if (button) {
     button.classList.add("selected");
@@ -378,36 +575,58 @@ function updateTargetButtons() {
 
 function startCareer() {
 
-  const nameInput =
-    document.getElementById("managerName");
+  const input =
+    el("managerName");
 
   const name =
-    nameInput.value.trim();
+    input
+      ? input.value.trim()
+      : "";
 
   if (!name) {
 
-    alert("Masukkan nama manager dulu.");
+    alert(
+      "Masukkan nama manager dulu."
+    );
 
     return;
   }
 
-  game.managerName = name;
+  game.managerName =
+    name;
 
-  game.target = selectedTarget;
+  game.target =
+    selectedTarget;
 
-  game.careerStarted = true;
+  game.careerStarted =
+    true;
 
-  game.year = 2026;
+  game.year =
+    getCurrentLeague()?.season || 2026;
 
-  game.budget = 500000;
+  game.budget =
+    500000;
 
-  game.reputation = 50;
+  game.reputation =
+    50;
 
-  game.organizationLevel = 1;
+  game.organizationLevel =
+    1;
 
-  game.history = [];
+  game.history =
+    [];
 
-  game.world = createWorldState();
+  game.requests =
+    [];
+
+  game.seasonComplete =
+    false;
+
+  game.phase =
+    "regular";
+
+  game.world =
+    createWorldState();
 
   createSeason();
 
@@ -415,7 +634,9 @@ function startCareer() {
 
   renderDashboard();
 
-  showScreen("dashboardScreen");
+  showScreen(
+    "dashboardScreen"
+  );
 
 }
 
@@ -426,29 +647,36 @@ function startCareer() {
 
 function createSeason() {
 
-  const league = getCurrentLeague();
+  const league =
+    getCurrentLeague();
 
   if (!league) return;
-
-  game.year = league.season;
 
   game.standings =
     createStandings(league);
 
   game.schedule =
-    createRoundRobinSchedule(league);
+    createRoundRobinSchedule(
+      league
+    );
 
-  game.currentMatch = null;
+  game.currentMatch =
+    null;
 
-  game.lastResult = null;
+  game.lastResult =
+    null;
 
-  game.marketPlayers = [];
+  game.marketPlayers =
+    [];
 
-  game.scoutingResult = null;
+  game.scoutingResult =
+    null;
 
-  game.requests = [];
+  game.seasonComplete =
+    false;
 
-  resetWorldSeason();
+  game.phase =
+    "regular";
 
 }
 
@@ -457,7 +685,8 @@ function createStandings(league) {
 
   return league.teams.map(team => ({
 
-    teamId: team.id,
+    teamId:
+      team.id,
 
     played: 0,
 
@@ -478,67 +707,105 @@ function createStandings(league) {
 }
 
 
-function createRoundRobinSchedule(league) {
+function createRoundRobinSchedule(
+  league
+) {
 
-  const teams = league.teams.map(team => team.id);
+  const teams =
+    league.teams.map(
+      team => team.id
+    );
 
-  let list = [...teams];
+  let list =
+    [...teams];
 
-  if (list.length % 2 !== 0) {
+  if (
+    list.length % 2 !== 0
+  ) {
     list.push(null);
   }
 
-  const rounds = list.length - 1;
+  const rounds =
+    list.length - 1;
 
-  const half = list.length / 2;
+  const half =
+    list.length / 2;
 
   const matches = [];
 
-  for (let round = 0; round < rounds; round++) {
+  for (
+    let round = 0;
+    round < rounds;
+    round++
+  ) {
 
-    const matchday = round + 1;
+    const matchday =
+      round + 1;
 
-    for (let i = 0; i < half; i++) {
+    for (
+      let i = 0;
+      i < half;
+      i++
+    ) {
 
-      const home = list[i];
+      const a =
+        list[i];
 
-      const away = list[list.length - 1 - i];
+      const b =
+        list[
+          list.length - 1 - i
+        ];
 
-      if (!home || !away) continue;
+      if (!a || !b) continue;
 
-      const homeFirst = round % 2 === 0;
+      const homeFirst =
+        round % 2 === 0;
 
       matches.push({
 
-        id: `regular-${matchday}-${i}`,
+        id:
+          `regular-${matchday}-${i}`,
 
         matchday,
 
-        stage: "regular",
+        stage:
+          "regular",
 
-        home: homeFirst ? home : away,
+        home:
+          homeFirst ? a : b,
 
-        away: homeFirst ? away : home,
+        away:
+          homeFirst ? b : a,
 
-        played: false,
+        played:
+          false,
 
-        winner: null,
+        winner:
+          null,
 
-        homeScore: null,
+        homeScore:
+          null,
 
-        awayScore: null
+        awayScore:
+          null
 
       });
 
     }
 
-    const fixed = list[0];
+    const fixed =
+      list[0];
 
-    const rest = list.slice(1);
+    const rest =
+      list.slice(1);
 
-    rest.unshift(rest.pop());
+    const moved =
+      rest.pop();
 
-    list = [fixed, ...rest];
+    rest.unshift(moved);
+
+    list =
+      [fixed, ...rest];
 
   }
 
@@ -553,35 +820,36 @@ function createRoundRobinSchedule(league) {
 
 function teamRating(teamId) {
 
-  const source = getTeamSource(teamId);
+  const players =
+    getTeamPlayers(teamId);
 
-  if (!source) return 50;
-
-  return teamRatingFromData(source.team);
-
-}
-
-
-function teamRatingFromData(team) {
-
-  if (!team || !team.players || !team.players.length) {
+  if (!players.length) {
     return 50;
   }
 
   const sorted =
-    [...team.players]
-      .sort((a, b) => b.rating - a.rating);
+    [...players]
+      .sort(
+        (a, b) =>
+          Number(b.rating || 0) -
+          Number(a.rating || 0)
+      );
 
   const starting =
-    sorted.slice(0, Math.min(5, sorted.length));
+    sorted.slice(0, 5);
 
-  const average =
+  const total =
     starting.reduce(
-      (sum, player) => sum + Number(player.rating || 0),
+      (sum, player) =>
+        sum +
+        Number(player.rating || 0),
       0
-    ) / starting.length;
+    );
 
-  return Math.round(average);
+  return Math.round(
+    total /
+    starting.length
+  );
 
 }
 
@@ -592,31 +860,50 @@ function teamRatingFromData(team) {
 
 function renderDashboard() {
 
-  document.getElementById("dashManager").textContent =
-    game.managerName;
+  const values = {
 
-  document.getElementById("dashSeason").textContent =
-    game.year;
+    dashManager:
+      game.managerName,
 
-  document.getElementById("dashTeam").textContent =
-    getCurrentTeamName();
+    dashSeason:
+      game.year,
 
-  document.getElementById("dashLeague").textContent =
-    getCurrentLeagueName();
+    dashTeam:
+      getCurrentTeamName(),
 
-  document.getElementById("dashBudget").textContent =
-    money(game.budget);
+    dashLeague:
+      getCurrentLeagueName(),
 
-  document.getElementById("dashRep").textContent =
-    game.reputation;
+    dashBudget:
+      money(game.budget),
 
-  document.getElementById("dashOrg").textContent =
-    `Level ${game.organizationLevel}`;
+    dashRep:
+      game.reputation,
 
-  document.getElementById("dashTarget").textContent =
-    getTargetName(game.target);
+    dashOrg:
+      `Level ${game.organizationLevel}`,
+
+    dashTarget:
+      getTargetName(game.target)
+
+  };
+
+  Object.entries(values)
+    .forEach(([id, value]) => {
+
+      const node =
+        el(id);
+
+      if (node) {
+        node.textContent =
+          value;
+      }
+
+    });
 
   renderNextMatch();
+
+  ensureWorldButton();
 
 }
 
@@ -624,7 +911,7 @@ function renderDashboard() {
 function renderNextMatch() {
 
   const container =
-    document.getElementById("nextMatch");
+    el("nextMatch");
 
   if (!container) return;
 
@@ -642,7 +929,11 @@ function renderNextMatch() {
 
     container.innerHTML = `
       <div class="empty">
-        Tidak ada pertandingan tersisa.
+        ${
+          game.seasonComplete
+            ? "Season selesai."
+            : "Tidak ada pertandingan tersisa."
+        }
       </div>
     `;
 
@@ -654,16 +945,21 @@ function renderNextMatch() {
       ? next.away
       : next.home;
 
-  const opponent =
-    getTeamSource(opponentId);
-
   container.innerHTML = `
     <div class="match-preview">
-      <strong>${getCurrentTeamName()}</strong>
 
-      <span class="versus">VS</span>
+      <strong>
+        ${getCurrentTeamName()}
+      </strong>
 
-      <strong>${opponent ? opponent.team.name : "Unknown"}</strong>
+      <span class="versus">
+        VS
+      </span>
+
+      <strong>
+        ${getTeamDisplayName(opponentId)}
+      </strong>
+
     </div>
 
     <div class="badge" style="margin-top:10px">
@@ -678,7 +974,204 @@ function backDashboard() {
 
   renderDashboard();
 
-  showScreen("dashboardScreen");
+  showScreen(
+    "dashboardScreen"
+  );
+
+}
+
+
+/* =========================================================
+   MANAGER
+   ========================================================= */
+
+function openManager() {
+
+  renderManager();
+
+  showScreen(
+    "managerScreen"
+  );
+
+}
+
+
+function renderManager() {
+
+  const container =
+    el("managerContent");
+
+  if (!container) return;
+
+  const team =
+    getCurrentTeam();
+
+  const salary =
+    team
+      ? team.players.reduce(
+          (sum, player) =>
+            sum +
+            Number(player.salary || 0),
+          0
+        )
+      : 0;
+
+  container.innerHTML = `
+
+    <div class="card">
+
+      <h3>👔 Manager</h3>
+
+      <div class="stat-grid">
+
+        <div>
+          <span>Manager</span>
+          <strong>
+            ${game.managerName}
+          </strong>
+        </div>
+
+        <div>
+          <span>Reputation</span>
+          <strong>
+            ${game.reputation}
+          </strong>
+        </div>
+
+        <div>
+          <span>Organization</span>
+          <strong>
+            Level ${game.organizationLevel}
+          </strong>
+        </div>
+
+        <div>
+          <span>Target</span>
+          <strong>
+            ${getTargetName(game.target)}
+          </strong>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <h3>💰 Financial</h3>
+
+      <p>
+        Budget:
+        <strong>${money(game.budget)}</strong>
+      </p>
+
+      <p style="margin-top:8px">
+        Annual Player Salary:
+        <strong>${money(salary)}</strong>
+      </p>
+
+    </div>
+
+    <div class="card">
+
+      <h3>⬆️ Organization Upgrade</h3>
+
+      <p>
+        Upgrade cost:
+        ${money(game.organizationLevel * 200000)}
+      </p>
+
+      <button
+        class="primary"
+        onclick="upgradeOrganization()"
+      >
+        Upgrade Organization
+      </button>
+
+    </div>
+
+    ${
+      game.requests.length
+        ? `
+          <div class="card">
+
+            <h3>📩 Contract Requests</h3>
+
+            ${game.requests.map(
+              request => `
+
+                <div class="player-card">
+
+                  <strong>
+                    ${request.playerName}
+                  </strong>
+
+                  <p style="margin-top:8px">
+                    Salary request:
+                    ${money(request.demand)}
+                  </p>
+
+                  <button
+                    class="small-btn"
+                    onclick="acceptRequest('${request.playerId}')"
+                  >
+                    Accept
+                  </button>
+
+                  <button
+                    class="small-btn"
+                    onclick="rejectRequest('${request.playerId}')"
+                  >
+                    Reject
+                  </button>
+
+                </div>
+
+              `
+            ).join("")}
+
+          </div>
+        `
+        : ""
+    }
+
+  `;
+
+}
+
+
+function upgradeOrganization() {
+
+  const cost =
+    game.organizationLevel *
+    200000;
+
+  if (
+    game.budget < cost
+  ) {
+
+    alert(
+      "Budget tidak cukup."
+    );
+
+    return;
+  }
+
+  game.budget -=
+    cost;
+
+  game.organizationLevel++;
+
+  game.reputation =
+    clamp(
+      game.reputation + 3,
+      0,
+      100
+    );
+
+  saveGame(false);
+
+  renderManager();
 
 }
 
@@ -689,11 +1182,7 @@ function backDashboard() {
 
 function getCurrentPlayers() {
 
-  const team = getCurrentTeam();
-
-  return team && team.players
-    ? team.players
-    : [];
+  return getCurrentTeam()?.players || [];
 
 }
 
@@ -701,7 +1190,9 @@ function getCurrentPlayers() {
 function sortPlayers(players) {
 
   return [...players].sort(
-    (a, b) => Number(b.rating || 0) - Number(a.rating || 0)
+    (a, b) =>
+      Number(b.rating || 0) -
+      Number(a.rating || 0)
   );
 
 }
@@ -711,7 +1202,9 @@ function openRoster() {
 
   renderRoster();
 
-  showScreen("rosterScreen");
+  showScreen(
+    "rosterScreen"
+  );
 
 }
 
@@ -719,12 +1212,14 @@ function openRoster() {
 function renderRoster() {
 
   const container =
-    document.getElementById("rosterList");
+    el("rosterList");
 
   if (!container) return;
 
   const players =
-    sortPlayers(getCurrentPlayers());
+    sortPlayers(
+      getCurrentPlayers()
+    );
 
   if (!players.length) {
 
@@ -734,81 +1229,91 @@ function renderRoster() {
     return;
   }
 
-  container.innerHTML = players.map((player, index) => {
+  container.innerHTML =
+    players.map(
+      (player, index) => {
 
-    const starting =
-      index < 5
-        ? "STARTING 5"
-        : "BENCH";
+        const starting =
+          index < 5
+            ? "STARTING 5"
+            : "BENCH";
 
-    return `
-      <div class="player-card">
+        return `
 
-        <div class="player-top">
+          <div class="player-card">
 
-          <div>
-            <div class="player-name">
-              ${player.name}
+            <div class="player-top">
+
+              <div>
+
+                <div class="player-name">
+                  ${player.name}
+                </div>
+
+                <div class="player-role">
+                  ${player.role || "Player"}
+                </div>
+
+              </div>
+
+              <div class="rating">
+                ${player.rating}
+              </div>
+
             </div>
 
-            <div class="player-role">
-              ${player.role || "Player"}
+            <div class="player-meta">
+
+              <span class="badge">
+                ${starting}
+              </span>
+
+              <span class="badge">
+                Age ${player.age}
+              </span>
+
+              <span class="badge">
+                POT ${player.potential}
+              </span>
+
+              <span class="badge">
+                ${player.nationality}
+              </span>
+
             </div>
+
+            <div class="player-meta">
+
+              <span class="badge">
+                Contract
+                ${player.contractYears || 1} yr
+              </span>
+
+              <span class="badge">
+                Salary
+                ${money(player.salary)}
+              </span>
+
+              <span class="badge">
+                Morale
+                ${player.morale || 70}
+              </span>
+
+            </div>
+
+            <button
+              class="small-btn"
+              onclick="extendContract('${player.id}')"
+            >
+              📝 Extend Contract
+            </button>
+
           </div>
 
-          <div class="rating">
-            ${player.rating}
-          </div>
+        `;
 
-        </div>
-
-        <div class="player-meta">
-
-          <span class="badge">
-            ${starting}
-          </span>
-
-          <span class="badge">
-            Age ${player.age}
-          </span>
-
-          <span class="badge">
-            POT ${player.potential}
-          </span>
-
-          <span class="badge">
-            ${player.nationality}
-          </span>
-
-        </div>
-
-        <div class="player-meta">
-
-          <span class="badge">
-            Contract ${player.contractYears || 1} yr
-          </span>
-
-          <span class="badge">
-            Salary ${money(player.salary || 0)}
-          </span>
-
-          <span class="badge">
-            Morale ${player.morale || 70}
-          </span>
-
-        </div>
-
-        <button
-          class="small-btn"
-          onclick="extendContract('${player.id}')"
-        >
-          📝 Extend Contract
-        </button>
-
-      </div>
-    `;
-
-  }).join("");
+      }
+    ).join("");
 
 }
 
@@ -819,33 +1324,43 @@ function renderRoster() {
 
 function extendContract(playerId) {
 
-  const team = getCurrentTeam();
+  const team =
+    getCurrentTeam();
 
   if (!team) return;
 
   const player =
-    team.players.find(p => p.id === playerId);
+    team.players.find(
+      p => p.id === playerId
+    );
 
   if (!player) return;
 
   const cost =
     Math.round(
-      (player.salary || 10000) *
+      Number(player.salary || 10000) *
       2
     );
 
-  if (game.budget < cost) {
+  if (
+    game.budget < cost
+  ) {
 
-    alert("Budget tidak cukup.");
+    alert(
+      "Budget tidak cukup."
+    );
 
     return;
   }
 
-  game.budget -= cost;
+  game.budget -=
+    cost;
 
   player.contractYears =
     Math.max(
-      Number(player.contractYears || 1),
+      Number(
+        player.contractYears || 1
+      ),
       1
     ) + 1;
 
@@ -868,7 +1383,7 @@ function extendContract(playerId) {
 
 
 /* =========================================================
-   TRANSFER MARKET
+   TRANSFER
    ========================================================= */
 
 function calculatePlayerValue(player) {
@@ -877,7 +1392,9 @@ function calculatePlayerValue(player) {
     Number(player.rating || 50);
 
   const potential =
-    Number(player.potential || rating);
+    Number(
+      player.potential || rating
+    );
 
   const age =
     Number(player.age || 20);
@@ -904,55 +1421,61 @@ function calculatePlayerValue(player) {
 
 function buildTransferMarket() {
 
-  const currentLeague =
-    getCurrentLeague();
-
-  if (!currentLeague) return [];
-
   const players = [];
 
-  getAllLeagues().forEach(league => {
+  getAllLeagues()
+    .forEach(league => {
 
-    league.teams.forEach(team => {
+      league.teams.forEach(team => {
 
-      if (team.id === game.team) return;
+        if (
+          team.id === game.team
+        ) return;
 
-      team.players.forEach(player => {
+        team.players.forEach(
+          player => {
 
-        players.push({
+            players.push({
 
-          ...player,
+              ...deepClone(player),
 
-          sourceTeamId: team.id,
+              sourceTeamId:
+                team.id,
 
-          sourceLeagueId: league.id,
+              sourceLeagueId:
+                league.id,
 
-          value: calculatePlayerValue(player),
+              value:
+                calculatePlayerValue(player),
 
-          marketId:
-            `${league.id}-${team.id}-${player.id}`
+              marketId:
+                `${league.id}-${team.id}-${player.id}`
 
-        });
+            });
+
+          }
+        );
 
       });
 
     });
 
-  });
-
   return players
     .sort(
       (a, b) =>
-        Number(b.rating) - Number(a.rating)
+        Number(b.rating || 0) -
+        Number(a.rating || 0)
     )
-    .slice(0, 40);
+    .slice(0, 50);
 
 }
 
 
 function openTransfer() {
 
-  if (!game.marketPlayers.length) {
+  if (
+    !game.marketPlayers.length
+  ) {
 
     game.marketPlayers =
       buildTransferMarket();
@@ -961,7 +1484,9 @@ function openTransfer() {
 
   renderTransfer();
 
-  showScreen("transferScreen");
+  showScreen(
+    "transferScreen"
+  );
 
 }
 
@@ -969,19 +1494,22 @@ function openTransfer() {
 function renderTransfer() {
 
   const info =
-    document.getElementById("transferInfo");
+    el("transferInfo");
 
   const container =
-    document.getElementById("transferList");
+    el("transferList");
 
-  const players =
-    game.marketPlayers;
+  if (!info || !container) return;
 
   const foreignCount =
     getImportCount();
 
   info.innerHTML = `
-    <strong>Budget: ${money(game.budget)}</strong>
+
+    <strong>
+      Budget:
+      ${money(game.budget)}
+    </strong>
 
     <p style="color:#8992a5;margin-top:7px">
       Foreign Players:
@@ -992,211 +1520,268 @@ function renderTransfer() {
       Reputation:
       ${game.reputation}
     </p>
+
   `;
 
-  if (!players.length) {
+  if (
+    !game.marketPlayers.length
+  ) {
 
     container.innerHTML =
-      `<div class="empty">Tidak ada pemain di market.</div>`;
+      `<div class="empty">Market kosong.</div>`;
 
     return;
   }
 
   container.innerHTML =
-    players.map(player => {
+    game.marketPlayers.map(
+      player => {
 
-      const foreign =
-        isForeignPlayer(player);
+        const foreign =
+          isForeignPlayer(player);
 
-      const blocked =
-        foreign &&
-        !canRegisterForeignPlayer();
+        const blocked =
+          foreign &&
+          !canRegisterForeignPlayer();
 
-      return `
-        <div class="player-card">
+        return `
 
-          <div class="player-top">
+          <div class="player-card">
 
-            <div>
-              <div class="player-name">
-                ${player.name}
+            <div class="player-top">
+
+              <div>
+
+                <div class="player-name">
+                  ${player.name}
+                </div>
+
+                <div class="player-role">
+                  ${player.role}
+                </div>
+
               </div>
 
-              <div class="player-role">
-                ${player.role}
+              <div class="rating">
+                ${player.rating}
               </div>
+
             </div>
 
-            <div class="rating">
-              ${player.rating}
+            <div class="player-meta">
+
+              <span class="badge">
+                ${player.nationality}
+              </span>
+
+              <span class="badge">
+                Age ${player.age}
+              </span>
+
+              <span class="badge">
+                POT ${player.potential}
+              </span>
+
+              ${
+                foreign
+                  ? `<span class="badge">🌎 IMPORT</span>`
+                  : ""
+              }
+
             </div>
 
-          </div>
+            <div class="transfer-price">
+              ${money(player.value)}
+            </div>
 
-          <div class="player-meta">
-
-            <span class="badge">
-              ${player.nationality}
-            </span>
-
-            <span class="badge">
-              Age ${player.age}
-            </span>
-
-            <span class="badge">
-              POT ${player.potential}
-            </span>
-
-            ${
-              foreign
-                ? `<span class="badge">🌎 IMPORT</span>`
-                : ""
-            }
+            <button
+              class="small-btn buy"
+              onclick="buyPlayer('${player.marketId}')"
+              ${blocked ? "disabled" : ""}
+            >
+              ${
+                blocked
+                  ? "🔒 Import Limit"
+                  : "💰 BUY PLAYER"
+              }
+            </button>
 
           </div>
 
-          <div class="transfer-price">
-            ${money(player.value)}
-          </div>
+        `;
 
-          <button
-            class="small-btn buy"
-            onclick="buyPlayer('${player.marketId}')"
-            ${blocked ? "disabled" : ""}
-          >
-            ${
-              blocked
-                ? "🔒 Import Limit"
-                : "💰 BUY PLAYER"
-            }
-          </button>
-
-        </div>
-      `;
-
-    }).join("");
+      }
+    ).join("");
 
 }
 
 
 function isForeignPlayer(player) {
 
+  const league =
+    getCurrentLeague();
+
+  if (!league) return false;
+
   const source =
-    getTeamSource(player.sourceTeamId);
+    getTeamSource(
+      player.sourceTeamId
+    );
 
   if (!source) return false;
 
-  return source.league.region !==
-    getCurrentLeague().region;
+  return (
+    source.league.region !==
+    league.region
+  );
 
 }
 
 
 function getImportCount() {
 
-  const currentTeam =
+  const team =
     getCurrentTeam();
 
-  if (!currentTeam) return 0;
+  const league =
+    getCurrentLeague();
+
+  if (!team || !league) {
+    return 0;
+  }
 
   const region =
-    getCurrentLeague().region;
+    league.region;
 
-  return currentTeam.players.filter(player => {
+  return team.players.filter(
+    player => {
 
-    const nationality =
-      String(player.nationality || "")
-        .toLowerCase();
+      const nationality =
+        String(
+          player.nationality || ""
+        ).toLowerCase();
 
-    const isHome =
-      (
-        region === "ID" &&
-        (
+      let home = false;
+
+      if (region === "ID") {
+
+        home =
           nationality === "id" ||
-          nationality.includes("indonesia")
-        )
-      ) ||
+          nationality.includes("indonesia");
 
-      (
-        region === "PH" &&
-        (
+      }
+
+      if (region === "PH") {
+
+        home =
           nationality === "ph" ||
-          nationality.includes("philippines")
-        )
-      ) ||
+          nationality.includes("philippines");
 
-      (
-        region === "KH" &&
-        (
+      }
+
+      if (region === "KH") {
+
+        home =
           nationality === "kh" ||
-          nationality.includes("cambodia")
-        )
-      );
+          nationality.includes("cambodia");
 
-    return !isHome;
+      }
 
-  }).length;
+      return !home;
+
+    }
+  ).length;
 
 }
 
 
 function canRegisterForeignPlayer() {
 
-  return getImportCount() < 2;
+  return (
+    getImportCount() < 2
+  );
 
 }
 
 
 function buyPlayer(marketId) {
 
-  const player =
+  const marketPlayer =
     game.marketPlayers.find(
-      p => p.marketId === marketId
+      p =>
+        p.marketId === marketId
     );
 
-  if (!player) return;
+  if (!marketPlayer) return;
 
-  if (game.budget < player.value) {
+  if (
+    game.budget <
+    marketPlayer.value
+  ) {
 
-    alert("Budget tidak cukup.");
+    alert(
+      "Budget tidak cukup."
+    );
 
     return;
   }
 
   if (
-    isForeignPlayer(player) &&
+    isForeignPlayer(marketPlayer) &&
     !canRegisterForeignPlayer()
   ) {
 
-    alert("Maksimal 2 foreign player.");
+    alert(
+      "Maksimal 2 foreign player."
+    );
 
     return;
   }
 
-  const currentTeam =
-    getCurrentTeam();
-
   const source =
-    getTeamSource(player.sourceTeamId);
-
-  if (!currentTeam || !source) return;
-
-  const originalIndex =
-    source.team.players.findIndex(
-      p => p.id === player.id
+    getTeamSource(
+      marketPlayer.sourceTeamId
     );
 
-  if (originalIndex === -1) return;
+  const team =
+    getCurrentTeam();
 
-  const boughtPlayer =
-    source.team.players.splice(
-      originalIndex,
-      1
-    )[0];
+  if (!source || !team) return;
 
-  currentTeam.players.push({
+  const index =
+    source.team.players.findIndex(
+      p =>
+        p.id ===
+        marketPlayer.id
+    );
 
-    ...boughtPlayer,
+  if (index === -1) {
+
+    alert(
+      "Player sudah tidak tersedia."
+    );
+
+    game.marketPlayers =
+      buildTransferMarket();
+
+    renderTransfer();
+
+    return;
+  }
+
+  /*
+    Kita COPY player.
+    Database asli tidak disentuh.
+  */
+
+  const bought =
+    deepClone(
+      source.team.players[index]
+    );
+
+  team.players.push({
+
+    ...bought,
 
     contractYears: 2,
 
@@ -1204,7 +1789,8 @@ function buyPlayer(marketId) {
 
   });
 
-  game.budget -= player.value;
+  game.budget -=
+    marketPlayer.value;
 
   game.reputation =
     clamp(
@@ -1213,15 +1799,23 @@ function buyPlayer(marketId) {
       100
     );
 
+  /*
+    Player hanya dihapus dari market.
+    Database asli tetap aman.
+  */
+
   game.marketPlayers =
-    buildTransferMarket();
+    game.marketPlayers.filter(
+      p =>
+        p.marketId !== marketId
+    );
 
   saveGame(false);
 
   renderTransfer();
 
   alert(
-    `${player.name} bergabung dengan ${currentTeam.name}!`
+    `${bought.name} bergabung dengan ${team.name}!`
   );
 
 }
@@ -1233,9 +1827,16 @@ function buyPlayer(marketId) {
 
 function openScouting() {
 
-  document.getElementById("scoutingResult").innerHTML = "";
+  const result =
+    el("scoutingResult");
 
-  showScreen("scoutingScreen");
+  if (result) {
+    result.innerHTML = "";
+  }
+
+  showScreen(
+    "scoutingScreen"
+  );
 
 }
 
@@ -1244,33 +1845,36 @@ function getScoutingPlayers() {
 
   const players = [];
 
-  getAllLeagues().forEach(league => {
+  getAllLeagues()
+    .forEach(league => {
 
-    league.teams.forEach(team => {
+      league.teams.forEach(team => {
 
-      team.players.forEach(player => {
+        team.players.forEach(player => {
 
-        if (
-          Number(player.age || 30) <= 23
-        ) {
+          if (
+            Number(player.age || 30) <= 23
+          ) {
 
-          players.push({
+            players.push({
 
-            ...player,
+              ...deepClone(player),
 
-            sourceTeamId: team.id,
+              sourceTeamId:
+                team.id,
 
-            sourceLeagueId: league.id
+              sourceLeagueId:
+                league.id
 
-          });
+            });
 
-        }
+          }
+
+        });
 
       });
 
     });
-
-  });
 
   return players;
 
@@ -1279,36 +1883,50 @@ function getScoutingPlayers() {
 
 function runScouting() {
 
-  const cost = 10000;
+  const cost =
+    10000;
 
-  if (game.budget < cost) {
+  if (
+    game.budget < cost
+  ) {
 
-    alert("Budget scouting tidak cukup.");
+    alert(
+      "Budget scouting tidak cukup."
+    );
 
     return;
   }
-
-  game.budget -= cost;
 
   const pool =
     getScoutingPlayers();
 
   if (!pool.length) return;
 
+  game.budget -=
+    cost;
+
   const player =
-    pool[random(0, pool.length - 1)];
+    pool[
+      random(0, pool.length - 1)
+    ];
 
-  game.scoutingResult = player;
+  game.scoutingResult =
+    player;
 
-  document.getElementById(
-    "scoutingResult"
-  ).innerHTML = `
+  const container =
+    el("scoutingResult");
 
-    <div class="player-card" style="margin-top:15px">
+  if (!container) return;
+
+  container.innerHTML = `
+
+    <div class="player-card"
+         style="margin-top:15px">
 
       <div class="player-top">
 
         <div>
+
           <div class="player-name">
             ${player.name}
           </div>
@@ -1316,6 +1934,7 @@ function runScouting() {
           <div class="player-role">
             ${player.role}
           </div>
+
         </div>
 
         <div class="rating">
@@ -1342,7 +1961,9 @@ function runScouting() {
 
       <p style="color:#8992a5;margin-top:12px">
         Current Team:
-        ${getTeamSource(player.sourceTeamId)?.team.name || "-"}
+        ${getTeamDisplayName(
+          player.sourceTeamId
+        )}
       </p>
 
     </div>
@@ -1362,7 +1983,9 @@ function openSchedule() {
 
   renderSchedule();
 
-  showScreen("scheduleScreen");
+  showScreen(
+    "scheduleScreen"
+  );
 
 }
 
@@ -1370,7 +1993,7 @@ function openSchedule() {
 function renderSchedule() {
 
   const container =
-    document.getElementById("scheduleList");
+    el("scheduleList");
 
   if (!container) return;
 
@@ -1383,77 +2006,106 @@ function renderSchedule() {
   }
 
   container.innerHTML =
-    game.schedule.map(match => {
+    game.schedule.map(
+      match => {
 
-      const home =
-        getTeamSource(match.home);
-
-      const away =
-        getTeamSource(match.away);
-
-      let result = "";
-
-      if (match.played) {
-
-        const userWon =
-          match.winner === game.team;
-
-        const userInMatch =
+        const userMatch =
           match.home === game.team ||
           match.away === game.team;
 
-        if (userInMatch) {
+        let result = "";
 
-          result = `
-            <div class="${userWon ? "win" : "loss"}"
-                 style="margin-top:8px">
-              ${match.homeScore} - ${match.awayScore}
-              • ${userWon ? "WIN" : "LOSS"}
-            </div>
-          `;
+        if (match.played) {
 
-        } else {
+          if (userMatch) {
 
-          result = `
-            <div style="margin-top:8px;color:#8992a5">
-              ${match.homeScore} - ${match.awayScore}
-            </div>
-          `;
+            const won =
+              match.winner === game.team;
+
+            result = `
+
+              <div
+                class="${won ? "win" : "loss"}"
+                style="margin-top:8px"
+              >
+                ${match.homeScore}
+                -
+                ${match.awayScore}
+
+                •
+                ${won ? "WIN" : "LOSS"}
+
+              </div>
+
+            `;
+
+          } else {
+
+            result = `
+
+              <div
+                style="margin-top:8px;color:#8992a5"
+              >
+                ${match.homeScore}
+                -
+                ${match.awayScore}
+              </div>
+
+            `;
+
+          }
 
         }
 
+        return `
+
+          <div class="
+            schedule-item
+            ${match.played ? "played" : ""}
+          ">
+
+            <div class="schedule-head">
+
+              <span>
+                ${
+                  match.matchday
+                    ? `Matchday ${match.matchday}`
+                    : "Playoff"
+                }
+              </span>
+
+              <span>
+                ${match.stage}
+              </span>
+
+            </div>
+
+            <div class="schedule-teams">
+
+              <strong>
+                ${getTeamDisplayName(
+                  match.home
+                )}
+              </strong>
+
+              <span>VS</span>
+
+              <strong>
+                ${getTeamDisplayName(
+                  match.away
+                )}
+              </strong>
+
+            </div>
+
+            ${result}
+
+          </div>
+
+        `;
+
       }
-
-      return `
-
-        <div class="schedule-item ${match.played ? "played" : ""}">
-
-          <div class="schedule-head">
-            <span>Matchday ${match.matchday}</span>
-            <span>${match.stage}</span>
-          </div>
-
-          <div class="schedule-teams">
-
-            <strong>
-              ${home ? home.team.name : "-"}
-            </strong>
-
-            <span>VS</span>
-
-            <strong>
-              ${away ? away.team.name : "-"}
-            </strong>
-
-          </div>
-
-          ${result}
-
-        </div>
-
-      `;
-
-    }).join("");
+    ).join("");
 
 }
 
@@ -1464,913 +2116,22 @@ function renderSchedule() {
 
 function playNextMatch() {
 
-  const next =
-    game.schedule.find(
-      match =>
-        !match.played &&
-        (
-          match.home === game.team ||
-          match.away === game.team
-        )
+  if (
+    game.seasonComplete
+  ) {
+
+    alert(
+      "Season sudah selesai."
     );
-
-  if (!next) {
-
-    alert("Tidak ada match lagi di regular season.");
 
     return;
   }
 
-  game.currentMatch = next.id;
-
-  renderMatch(next);
-
-  showScreen("matchScreen");
-
-}
-
-
-function renderMatch(match) {
-
-  const home =
-    getTeamSource(match.home);
-
-  const away =
-    getTeamSource(match.away);
-
-  const homeRating =
-    teamRating(match.home);
-
-  const awayRating =
-    teamRating(match.away);
-
-  const total =
-    homeRating + awayRating;
-
-  const homeChance =
-    Math.round(
-      (homeRating / total) * 100
-    );
-
-  const awayChance =
-    100 - homeChance;
-
-  document.getElementById("matchStage").textContent =
-    `Regular Season • Matchday ${match.matchday}`;
-
-  document.getElementById("matchHome").textContent =
-    home?.team.name || "-";
-
-  document.getElementById("matchAway").textContent =
-    away?.team.name || "-";
-
-  document.getElementById("matchHomeRating").textContent =
-    `Rating ${homeRating}`;
-
-  document.getElementById("matchAwayRating").textContent =
-    `Rating ${awayRating}`;
-
-  document.getElementById("homeChance").textContent =
-    `${homeChance}% ${home?.team.name || ""}`;
-
-  document.getElementById("awayChance").textContent =
-    `${awayChance}% ${away?.team.name || ""}`;
-
-  renderMatchRoster();
-
-}
-
-
-function renderMatchRoster() {
-
-  const container =
-    document.getElementById("matchRoster");
-
-  const players =
-    sortPlayers(getCurrentPlayers())
-      .slice(0, 5);
-
-  container.innerHTML =
-    players.map(player => `
-      <div class="match-player">
-        <span>${player.name}</span>
-        <strong>${player.rating}</strong>
-      </div>
-    `).join("");
-
-}
-
-
-function simulateCurrentMatch() {
-
-  const match =
-    game.schedule.find(
-      m => m.id === game.currentMatch
-    );
-
-  if (!match) return;
-
-  const homeRating =
-    teamRating(match.home);
-
-  const awayRating =
-    teamRating(match.away);
-
-  const winner =
-    simulateWinner(
-      homeRating,
-      awayRating
-    );
-
-  const score =
-    generateBO3(
-      winner,
-      match
-    );
-
-  match.played = true;
-
-  match.winner = winner;
-
-  match.homeScore = score.home;
-
-  match.awayScore = score.away;
-
-  updateStandingsFromMatch(match);
-
-  game.lastResult = {
-
-    type: "regular",
-
-    matchId: match.id,
-
-    winner,
-
-    home: match.home,
-
-    away: match.away,
-
-    homeScore: score.home,
-
-    awayScore: score.away
-
-  };
-
-  autoSimulateMatchday(match.matchday);
-
-  saveGame(false);
-
-  renderResult(match);
-
-  showScreen("resultScreen");
-
-}
-
-
-function simulateWinner(homeRating, awayRating) {
-
-  const total =
-    homeRating + awayRating;
-
-  const chance =
-    homeRating / total;
-
-  return Math.random() < chance
-    ? game.schedule.find(m =>
-        m.id === game.currentMatch
-      ).home
-    : game.schedule.find(m =>
-        m.id === game.currentMatch
-      ).away;
-
-}
-
-
-function generateBO3(winner, match) {
-
-  if (!match) {
-
-    return {
-      home: 2,
-      away: 1
-    };
-
-  }
-
-  if (winner === match.home) {
-
-    return {
-      home: 2,
-      away: Math.random() < 0.55 ? 0 : 1
-    };
-
-  }
-
-  return {
-    home: Math.random() < 0.55 ? 0 : 1,
-    away: 2
-  };
-
-}
-
-
-function updateStandingsFromMatch(match) {
-
-  const home =
-    game.standings.find(
-      s => s.teamId === match.home
-    );
-
-  const away =
-    game.standings.find(
-      s => s.teamId === match.away
-    );
-
-  if (!home || !away) return;
-
-  home.played++;
-  away.played++;
-
-  home.mapWin += match.homeScore;
-  home.mapLoss += match.awayScore;
-
-  away.mapWin += match.awayScore;
-  away.mapLoss += match.homeScore;
-
-  home.diff =
-    home.mapWin - home.mapLoss;
-
-  away.diff =
-    away.mapWin - away.mapLoss;
-
-  if (match.winner === match.home) {
-
-    home.wins++;
-    away.losses++;
-
-    home.points += 3;
-
-  } else {
-
-    away.wins++;
-    home.losses++;
-
-    away.points += 3;
-
-  }
-
-}
-
-
-function autoSimulateMatchday(matchday) {
-
-  const matches =
-    game.schedule.filter(
-      m =>
-        m.matchday === matchday &&
-        !m.played
-    );
-
-  matches.forEach(match => {
-
-    const winner =
-      simulateGenericWinner(
-        match.home,
-        match.away
-      );
-
-    const score =
-      generateBO3(
-        winner,
-        match
-      );
-
-    match.played = true;
-
-    match.winner = winner;
-
-    match.homeScore = score.home;
-
-    match.awayScore = score.away;
-
-    updateStandingsFromMatch(match);
-
-  });
-
-}
-
-
-/* =========================================================
-   RESULT
-   ========================================================= */
-
-function renderResult(match) {
-
-  const home =
-    getTeamSource(match.home);
-
-  const away =
-    getTeamSource(match.away);
-
-  const winner =
-    getTeamSource(match.winner);
-
-  document.getElementById(
-    "resultTeams"
-  ).innerHTML = `
-    <strong>
-      ${home?.team.name || "-"}
-    </strong>
-
-    <span style="color:#8992a5">
-      vs
-    </span>
-
-    <strong>
-      ${away?.team.name || "-"}
-    </strong>
-  `;
-
-  document.getElementById(
-    "resultScore"
-  ).textContent =
-    `${match.homeScore} - ${match.awayScore}`;
-
-  document.getElementById(
-    "resultWinner"
-  ).textContent =
-    `🏆 ${winner?.team.name || "-"}`;
-
-  const userWon =
-    match.winner === game.team;
-
-  document.getElementById(
-    "resultMessage"
-  ).textContent =
-    userWon
-      ? "Mantap! Tim lu menang."
-      : "Kali ini belum berhasil. Gas lagi di match berikutnya.";
-
-}
-
-
-function finishMatch() {
-
-  checkRegularSeason();
-
-  renderDashboard();
-
-  showScreen("dashboardScreen");
-
-}
-
-
-function checkRegularSeason() {
-
-  const remaining =
-    game.schedule.some(
-      match => !match.played
-    );
-
-  if (remaining) return;
-
-  finishRegularSeason();
-
-}
-
-
-/* =========================================================
-   STANDINGS
-   ========================================================= */
-
-function getSortedStandings() {
-
-  return [...game.standings].sort(
-    (a, b) => {
-
-      if (b.points !== a.points) {
-        return b.points - a.points;
-      }
-
-      if (b.diff !== a.diff) {
-        return b.diff - a.diff;
-      }
-
-      return b.mapWin - a.mapWin;
-
-    }
-  );
-
-}
-
-
-function finishRegularSeason() {
-
-  const ranking =
-    getSortedStandings();
-
-  const position =
-    ranking.findIndex(
-      s => s.teamId === game.team
-    ) + 1;
-
-  if (position <= 4) {
-
-    startPlayoffs();
-
-  } else {
-
-    finishSeason(null);
-
-  }
-
-}
-
-
-/* =========================================================
-   PLAYOFF
-   ========================================================= */
-
-function startPlayoffs() {
-
-  const ranking =
-    getSortedStandings()
-      .slice(0, 4);
-
-  const semi1 = {
-
-    id: "playoff-sf-1",
-
-    matchday: null,
-
-    stage: "semifinal",
-
-    home: ranking[0].teamId,
-
-    away: ranking[3].teamId,
-
-    played: false,
-
-    winner: null,
-
-    homeScore: null,
-
-    awayScore: null
-
-  };
-
-  const semi2 = {
-
-    id: "playoff-sf-2",
-
-    matchday: null,
-
-    stage: "semifinal",
-
-    home: ranking[1].teamId,
-
-    away: ranking[2].teamId,
-
-    played: false,
-
-    winner: null,
-
-    homeScore: null,
-
-    awayScore: null
-
-  };
-
-  game.schedule.push(
-    semi1,
-    semi2
-  );
-
-  game.currentMatch =
-    semi1.id;
-
-  playPlayoffMatch(semi1);
-
-}
-
-
-function playPlayoffMatch(match) {
-
-  const winner =
-    simulateGenericWinner(
-      match.home,
-      match.away
-    );
-
-  const score =
-    generateBO3(
-      winner,
-      match
-    );
-
-  match.played = true;
-
-  match.winner = winner;
-
-  match.homeScore = score.home;
-
-  match.awayScore = score.away;
-
-  saveGame(false);
-
-  setTimeout(() => {
-
-    const nextSemi =
-      game.schedule.find(
-        m =>
-          m.stage === "semifinal" &&
-          !m.played
-      );
-
-    if (nextSemi) {
-
-      game.currentMatch =
-        nextSemi.id;
-
-      playPlayoffMatch(nextSemi);
-
-    } else {
-
-      startGrandFinal();
-
-    }
-
-  }, 150);
-
-}
-
-
-function startGrandFinal() {
-
-  const semifinal =
-    game.schedule.filter(
-      m => m.stage === "semifinal"
-    );
-
-  const finalists =
-    semifinal.map(m => m.winner);
-
-  const final = {
-
-    id: "playoff-final",
-
-    matchday: null,
-
-    stage: "grand-final",
-
-    home: finalists[0],
-
-    away: finalists[1],
-
-    played: false,
-
-    winner: null,
-
-    homeScore: null,
-
-    awayScore: null
-
-  };
-
-  game.schedule.push(final);
-
-  game.currentMatch =
-    final.id;
-
-  const winner =
-    simulateGenericWinner(
-      final.home,
-      final.away
-    );
-
-  const score =
-    generateBO3(
-      winner,
-      final
-    );
-
-  final.played = true;
-
-  final.winner = winner;
-
-  final.homeScore = score.home;
-
-  final.awayScore = score.away;
-
-  const champion =
-    getTeamSource(winner);
-
-  setTimeout(() => {
-
-    alert(
-      `🏆 GRAND FINAL\n\nChampion:\n${champion?.team.name || winner}`
-    );
-
-    finishSeason(winner);
-
-  }, 150);
-
-}
-
-
-/* =========================================================
-   GENERIC MATCH
-   ========================================================= */
-
-function simulateGenericWinner(homeId, awayId) {
-
-  const homeRating =
-    teamRating(homeId);
-
-  const awayRating =
-    teamRating(awayId);
-
-  const total =
-    homeRating + awayRating;
-
-  const chance =
-    homeRating / total;
-
-  return Math.random() < chance
-    ? homeId
-    : awayId;
-
-}
-
-
-/* =========================================================
-   SEASON END
-   ========================================================= */
-
-function finishSeason(championId) {
-
-  const ranking =
-    getSortedStandings();
-
-  const position =
-    ranking.findIndex(
-      s => s.teamId === game.team
-    ) + 1;
-
-  let championName = "-";
-
-  if (championId) {
-
-    championName =
-      getTeamSource(championId)
-        ?.team.name || championId;
-
-  } else if (ranking.length) {
-
-    championName =
-      getTeamSource(ranking[0].teamId)
-        ?.team.name || "-";
-
-  }
-
-  const reward =
-    calculateSeasonReward(
-      position,
-      championId
-    );
-
-  game.budget += reward;
-
-  updateReputation(
-    position,
-    championId
-  );
-
-  processSeasonDevelopment();
-
-  processContracts();
-
-  addSeasonHistory(
-    position,
-    championName
-  );
-
-  game.year++;
-
-  game.league =
-    game.league;
-
-  game.world =
-    createWorldState();
-
-  alert(
-    `SEASON SELESAI!\n\n` +
-    `Posisi: #${position}\n` +
-    `Champion: ${championName}\n` +
-    `Reward: ${money(reward)}\n\n` +
-    `Season berikutnya: ${game.year}`
-  );
-
-  createSeason();
-
-  saveGame(false);
-
-  renderDashboard();
-
-}
-
-
-function calculateSeasonReward(position, championId) {
-
-  if (championId === game.team) {
-    return 300000;
-  }
-
-  if (position <= 3) {
-    return 180000;
-  }
-
-  if (position <= 4) {
-    return 120000;
-  }
-
-  return 50000;
-
-}
-
-
-function updateReputation(position, championId) {
-
-  let change = 0;
-
-  if (championId === game.team) {
-    change += 15;
-  } else if (position === 2) {
-    change += 10;
-  } else if (position === 3) {
-    change += 6;
-  } else if (position <= 4) {
-    change += 2;
-  } else {
-    change -= 5;
-  }
-
-  game.reputation =
-    clamp(
-      game.reputation + change,
-      0,
-      100
-    );
-
-}
-
-
-/* =========================================================
-   PLAYER DEVELOPMENT
-   ========================================================= */
-
-function processSeasonDevelopment() {
-
-  getAllLeagues().forEach(league => {
-
-    league.teams.forEach(team => {
-
-      team.players.forEach(player => {
-
-        player.age =
-          Number(player.age || 20) + 1;
-
-        const rating =
-          Number(player.rating || 50);
-
-        const potential =
-          Number(player.potential || rating);
-
-        let change = 0;
-
-        if (rating < potential) {
-
-          if (player.age <= 23) {
-
-            change =
-              random(1, 4);
-
-          } else if (player.age <= 26) {
-
-            change =
-              random(0, 2);
-
-          }
-
-        }
-
-        if (player.age >= 28) {
-
-          change -=
-            random(0, 3);
-
-        }
-
-        player.rating =
-          clamp(
-            rating + change,
-            1,
-            100
-          );
-
-        player.morale =
-          clamp(
-            Number(player.morale || 70) +
-            random(-8, 8),
-            0,
-            100
-          );
-
-      });
-
-    });
-
-  });
-
-}
-
-
-/* =========================================================
-   CONTRACTS
-   ========================================================= */
-
-function processContracts() {
-
-  getAllLeagues().forEach(league => {
-
-    league.teams.forEach(team => {
-
-      team.players =
-        team.players.filter(player => {
-
-          player.contractYears =
-            Math.max(
-              0,
-              Number(player.contractYears || 1) - 1
-            );
-
-          if (player.contractYears <= 0) {
-
-            const chance =
-              Math.random();
-
-            if (
-              team.id === game.team &&
-              chance < 0.65
-            ) {
-
-              game.requests.push({
-
-                playerId: player.id,
-
-                playerName: player.name,
-
-                type: "contract",
-
-                demand:
-                  Math.round(
-                    (player.salary || 10000) *
-                    1.25
-                  )
-
-              });
-
-              player.contractYears = 1;
-
-              return true;
-
-            }
-
-            return false;
-
-          }
-
-          return true;
-
-        });
-
-    });
-
-  });
-
-}
-
-
-/* =========================================================
-   ADVANCE DAY
-   ========================================================= */
-
-function advanceDay() {
-
   const next =
     game.schedule.find(
       match =>
         !match.played &&
+        match.stage === "regular" &&
         (
           match.home === game.team ||
           match.away === game.team
@@ -2384,30 +2145,1664 @@ function advanceDay() {
     return;
   }
 
-  const previousMatchday =
-    game.schedule
-      .filter(m => m.played)
-      .reduce(
-        (max, m) =>
-          Math.max(
-            max,
-            Number(m.matchday || 0)
-          ),
-        0
-      );
+  game.currentMatch =
+    next.id;
+
+  renderMatch(next);
+
+  showScreen(
+    "matchScreen"
+  );
+
+}
+
+
+function renderMatch(match) {
+
+  const homeName =
+    getTeamDisplayName(
+      match.home
+    );
+
+  const awayName =
+    getTeamDisplayName(
+      match.away
+    );
+
+  const homeRating =
+    teamRating(
+      match.home
+    );
+
+  const awayRating =
+    teamRating(
+      match.away
+    );
+
+  const total =
+    homeRating +
+    awayRating;
+
+  const homeChance =
+    total > 0
+      ? Math.round(
+          homeRating /
+          total *
+          100
+        )
+      : 50;
+
+  const awayChance =
+    100 - homeChance;
+
+  const stage =
+    el("matchStage");
+
+  const home =
+    el("matchHome");
+
+  const away =
+    el("matchAway");
+
+  const homeR =
+    el("matchHomeRating");
+
+  const awayR =
+    el("matchAwayRating");
+
+  const homeC =
+    el("homeChance");
+
+  const awayC =
+    el("awayChance");
+
+  if (stage) {
+    stage.textContent =
+      `${match.stage === "regular"
+        ? "Regular Season"
+        : match.stage}
+       •
+       ${match.matchday
+         ? `Matchday ${match.matchday}`
+         : ""}`;
+  }
+
+  if (home) {
+    home.textContent =
+      homeName;
+  }
+
+  if (away) {
+    away.textContent =
+      awayName;
+  }
+
+  if (homeR) {
+    homeR.textContent =
+      `Rating ${homeRating}`;
+  }
+
+  if (awayR) {
+    awayR.textContent =
+      `Rating ${awayRating}`;
+  }
+
+  if (homeC) {
+    homeC.textContent =
+      `${homeChance}% ${homeName}`;
+  }
+
+  if (awayC) {
+    awayC.textContent =
+      `${awayChance}% ${awayName}`;
+  }
+
+  renderMatchRoster();
+
+}
+
+
+function renderMatchRoster() {
+
+  const container =
+    el("matchRoster");
+
+  if (!container) return;
+
+  const players =
+    sortPlayers(
+      getCurrentPlayers()
+    ).slice(0, 5);
+
+  container.innerHTML =
+    players.map(
+      player => `
+
+        <div class="match-player">
+
+          <span>
+            ${player.name}
+          </span>
+
+          <strong>
+            ${player.rating}
+          </strong>
+
+        </div>
+
+      `
+    ).join("");
+
+}
+
+
+function simulateCurrentMatch() {
+
+  const match =
+    game.schedule.find(
+      m =>
+        m.id ===
+        game.currentMatch
+    );
+
+  if (!match || match.played) {
+    return;
+  }
+
+  const winner =
+    simulateGenericWinner(
+      match.home,
+      match.away
+    );
+
+  const score =
+    generateBO3(
+      winner,
+      match
+    );
+
+  finishMatchObject(
+    match,
+    winner,
+    score
+  );
+
+  game.lastResult = {
+
+    type: "regular",
+
+    matchId:
+      match.id,
+
+    winner,
+
+    home:
+      match.home,
+
+    away:
+      match.away,
+
+    homeScore:
+      score.home,
+
+    awayScore:
+      score.away
+
+  };
+
+  autoSimulateMatchday(
+    match.matchday
+  );
+
+  saveGame(false);
+
+  renderResult(match);
+
+  showScreen(
+    "resultScreen"
+  );
+
+}
+
+
+function finishMatchObject(
+  match,
+  winner,
+  score
+) {
+
+  match.played =
+    true;
+
+  match.winner =
+    winner;
+
+  match.homeScore =
+    score.home;
+
+  match.awayScore =
+    score.away;
 
   if (
-    next.matchday >
-    previousMatchday
+    match.stage === "regular"
   ) {
 
-    alert(
-      `Match berikutnya adalah Matchday ${next.matchday}.`
+    updateStandingsFromMatch(
+      match
     );
 
   }
 
-  playNextMatch();
+}
+
+
+function simulateGenericWinner(
+  homeId,
+  awayId
+) {
+
+  const homeRating =
+    teamRating(homeId);
+
+  const awayRating =
+    teamRating(awayId);
+
+  const total =
+    homeRating +
+    awayRating;
+
+  if (total <= 0) {
+    return homeId;
+  }
+
+  const chance =
+    homeRating /
+    total;
+
+  return Math.random() <
+    chance
+      ? homeId
+      : awayId;
+
+}
+
+
+function generateBO3(
+  winner,
+  match
+) {
+
+  if (
+    winner ===
+    match.home
+  ) {
+
+    return {
+
+      home: 2,
+
+      away:
+        Math.random() < 0.55
+          ? 0
+          : 1
+
+    };
+
+  }
+
+  return {
+
+    home:
+      Math.random() < 0.55
+        ? 0
+        : 1,
+
+    away: 2
+
+  };
+
+}
+
+
+function updateStandingsFromMatch(
+  match
+) {
+
+  const home =
+    game.standings.find(
+      s =>
+        s.teamId ===
+        match.home
+    );
+
+  const away =
+    game.standings.find(
+      s =>
+        s.teamId ===
+        match.away
+    );
+
+  if (!home || !away) return;
+
+  home.played++;
+  away.played++;
+
+  home.mapWin +=
+    match.homeScore;
+
+  home.mapLoss +=
+    match.awayScore;
+
+  away.mapWin +=
+    match.awayScore;
+
+  away.mapLoss +=
+    match.homeScore;
+
+  home.diff =
+    home.mapWin -
+    home.mapLoss;
+
+  away.diff =
+    away.mapWin -
+    away.mapLoss;
+
+  if (
+    match.winner ===
+    match.home
+  ) {
+
+    home.wins++;
+
+    away.losses++;
+
+    home.points += 3;
+
+  } else {
+
+    away.wins++;
+
+    home.losses++;
+
+    away.points += 3;
+
+  }
+
+}
+
+
+function autoSimulateMatchday(
+  matchday
+) {
+
+  const matches =
+    game.schedule.filter(
+      match =>
+        match.matchday ===
+        matchday &&
+        !match.played
+    );
+
+  matches.forEach(
+    match => {
+
+      const winner =
+        simulateGenericWinner(
+          match.home,
+          match.away
+        );
+
+      const score =
+        generateBO3(
+          winner,
+          match
+        );
+
+      finishMatchObject(
+        match,
+        winner,
+        score
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   RESULT
+   ========================================================= */
+
+function renderResult(match) {
+
+  const teams =
+    el("resultTeams");
+
+  const score =
+    el("resultScore");
+
+  const winner =
+    el("resultWinner");
+
+  const message =
+    el("resultMessage");
+
+  if (teams) {
+
+    teams.innerHTML = `
+
+      <strong>
+        ${getTeamDisplayName(
+          match.home
+        )}
+      </strong>
+
+      <span style="color:#8992a5">
+        vs
+      </span>
+
+      <strong>
+        ${getTeamDisplayName(
+          match.away
+        )}
+      </strong>
+
+    `;
+
+  }
+
+  if (score) {
+
+    score.textContent =
+      `${match.homeScore}
+       -
+       ${match.awayScore}`;
+
+  }
+
+  if (winner) {
+
+    winner.textContent =
+      `🏆 ${getTeamDisplayName(
+        match.winner
+      )}`;
+
+  }
+
+  if (message) {
+
+    message.textContent =
+      match.winner === game.team
+        ? "Mantap! Tim lu menang."
+        : "Kali ini belum berhasil. Gas lagi.";
+
+  }
+
+}
+
+
+function finishMatch() {
+
+  checkRegularSeason();
+
+  if (
+    !game.seasonComplete
+  ) {
+
+    renderDashboard();
+
+    showScreen(
+      "dashboardScreen"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   STANDINGS
+   ========================================================= */
+
+function getSortedStandings() {
+
+  return [...game.standings]
+    .sort((a, b) => {
+
+      if (
+        b.points !==
+        a.points
+      ) {
+
+        return (
+          b.points -
+          a.points
+        );
+
+      }
+
+      if (
+        b.diff !==
+        a.diff
+      ) {
+
+        return (
+          b.diff -
+          a.diff
+        );
+
+      }
+
+      return (
+        b.mapWin -
+        a.mapWin
+      );
+
+    });
+
+}
+
+
+function openStandings() {
+
+  renderStandings();
+
+  showScreen(
+    "standingsScreen"
+  );
+
+}
+
+
+function renderStandings() {
+
+  const container =
+    el("standingsList");
+
+  if (!container) return;
+
+  const ranking =
+    getSortedStandings();
+
+  container.innerHTML =
+    ranking.map(
+      (row, index) => `
+
+        <div class="standing-row">
+
+          <div>
+            <strong>
+              #${index + 1}
+            </strong>
+          </div>
+
+          <div>
+            <strong>
+              ${getTeamDisplayName(
+                row.teamId
+              )}
+            </strong>
+
+            <span>
+              ${row.wins}W
+              -
+              ${row.losses}L
+            </span>
+          </div>
+
+          <div>
+            ${row.points} pts
+          </div>
+
+        </div>
+
+      `
+    ).join("");
+
+}
+
+
+/* =========================================================
+   REGULAR SEASON
+   ========================================================= */
+
+function checkRegularSeason() {
+
+  const remaining =
+    game.schedule.some(
+      match =>
+        match.stage === "regular" &&
+        !match.played
+    );
+
+  if (remaining) return;
+
+  if (
+    game.phase !==
+    "regular"
+  ) return;
+
+  finishRegularSeason();
+
+}
+
+
+function finishRegularSeason() {
+
+  game.phase =
+    "playoffs";
+
+  const ranking =
+    getSortedStandings();
+
+  const position =
+    ranking.findIndex(
+      row =>
+        row.teamId ===
+        game.team
+    ) + 1;
+
+  if (
+    position <= 4
+  ) {
+
+    startPlayoffs();
+
+  } else {
+
+    /*
+      User tidak lolos playoff.
+      Playoff tetap disimulasikan.
+    */
+
+    simulatePlayoffsAutomatically();
+
+  }
+
+}
+
+
+/* =========================================================
+   PLAYOFF
+   ========================================================= */
+
+function startPlayoffs() {
+
+  const existing =
+    game.schedule.filter(
+      m =>
+        m.stage === "semifinal" ||
+        m.stage === "grand-final"
+    );
+
+  if (existing.length) {
+    return;
+  }
+
+  const ranking =
+    getSortedStandings()
+      .slice(0, 4);
+
+  if (
+    ranking.length < 4
+  ) {
+
+    finishSeason(
+      ranking[0]?.teamId || null
+    );
+
+    return;
+  }
+
+  const semi1 = {
+
+    id:
+      "playoff-sf-1",
+
+    stage:
+      "semifinal",
+
+    home:
+      ranking[0].teamId,
+
+    away:
+      ranking[3].teamId,
+
+    played:
+      false,
+
+    winner:
+      null,
+
+    homeScore:
+      null,
+
+    awayScore:
+      null
+
+  };
+
+  const semi2 = {
+
+    id:
+      "playoff-sf-2",
+
+    stage:
+      "semifinal",
+
+    home:
+      ranking[1].teamId,
+
+    away:
+      ranking[2].teamId,
+
+    played:
+      false,
+
+    winner:
+      null,
+
+    homeScore:
+      null,
+
+    awayScore:
+      null
+
+  };
+
+  game.schedule.push(
+    semi1,
+    semi2
+  );
+
+  /*
+    Jika user ada di semifinal,
+    biarkan user memainkan match.
+  */
+
+  const userSemi =
+    [semi1, semi2].find(
+      match =>
+        match.home === game.team ||
+        match.away === game.team
+    );
+
+  if (userSemi) {
+
+    game.currentMatch =
+      userSemi.id;
+
+    renderMatch(
+      userSemi
+    );
+
+    showScreen(
+      "matchScreen"
+    );
+
+  } else {
+
+    simulateRemainingPlayoffs();
+
+  }
+
+}
+
+
+function simulateRemainingPlayoffs() {
+
+  const semifinals =
+    game.schedule.filter(
+      m =>
+        m.stage === "semifinal"
+    );
+
+  semifinals.forEach(
+    match => {
+
+      if (match.played) return;
+
+      const winner =
+        simulateGenericWinner(
+          match.home,
+          match.away
+        );
+
+      const score =
+        generateBO3(
+          winner,
+          match
+        );
+
+      finishMatchObject(
+        match,
+        winner,
+        score
+      );
+
+    }
+  );
+
+  startGrandFinal();
+
+}
+
+
+function startGrandFinal() {
+
+  const finalExists =
+    game.schedule.find(
+      m =>
+        m.stage ===
+        "grand-final"
+    );
+
+  if (finalExists) {
+
+    if (
+      !finalExists.played &&
+      (
+        finalExists.home === game.team ||
+        finalExists.away === game.team
+      )
+    ) {
+
+      game.currentMatch =
+        finalExists.id;
+
+      renderMatch(
+        finalExists
+      );
+
+      showScreen(
+        "matchScreen"
+      );
+
+    }
+
+    return;
+  }
+
+  const semifinal =
+    game.schedule.filter(
+      m =>
+        m.stage ===
+        "semifinal" &&
+        m.played
+    );
+
+  if (
+    semifinal.length < 2
+  ) return;
+
+  const final = {
+
+    id:
+      "playoff-final",
+
+    stage:
+      "grand-final",
+
+    home:
+      semifinal[0].winner,
+
+    away:
+      semifinal[1].winner,
+
+    played:
+      false,
+
+    winner:
+      null,
+
+    homeScore:
+      null,
+
+    awayScore:
+      null
+
+  };
+
+  game.schedule.push(
+    final
+  );
+
+  const userInFinal =
+    final.home === game.team ||
+    final.away === game.team;
+
+  if (userInFinal) {
+
+    game.currentMatch =
+      final.id;
+
+    renderMatch(
+      final
+    );
+
+    showScreen(
+      "matchScreen"
+    );
+
+  } else {
+
+    const winner =
+      simulateGenericWinner(
+        final.home,
+        final.away
+      );
+
+    const score =
+      generateBO3(
+        winner,
+        final
+      );
+
+    finishMatchObject(
+      final,
+      winner,
+      score
+    );
+
+    finishSeason(
+      winner
+    );
+
+  }
+
+}
+
+
+function simulatePlayoffsAutomatically() {
+
+  const ranking =
+    getSortedStandings()
+      .slice(0, 4);
+
+  if (
+    ranking.length < 4
+  ) {
+
+    finishSeason(
+      ranking[0]?.teamId ||
+      null
+    );
+
+    return;
+  }
+
+  const semiWinners = [];
+
+  const pairs = [
+
+    [
+      ranking[0].teamId,
+      ranking[3].teamId
+    ],
+
+    [
+      ranking[1].teamId,
+      ranking[2].teamId
+    ]
+
+  ];
+
+  pairs.forEach(
+    pair => {
+
+      const winner =
+        simulateGenericWinner(
+          pair[0],
+          pair[1]
+        );
+
+      semiWinners.push(
+        winner
+      );
+
+    }
+  );
+
+  const champion =
+    simulateGenericWinner(
+      semiWinners[0],
+      semiWinners[1]
+    );
+
+  finishSeason(
+    champion
+  );
+
+}
+
+
+/* =========================================================
+   SEASON END
+   ========================================================= */
+
+function finishSeason(
+  championId
+) {
+
+  if (
+    game.seasonComplete
+  ) return;
+
+  const ranking =
+    getSortedStandings();
+
+  const position =
+    ranking.findIndex(
+      row =>
+        row.teamId ===
+        game.team
+    ) + 1;
+
+  const champion =
+    championId ||
+    ranking[0]?.teamId ||
+    null;
+
+  const championName =
+    champion
+      ? getTeamDisplayName(
+          champion
+        )
+      : "-";
+
+  const reward =
+    calculateSeasonReward(
+      position,
+      champion
+    );
+
+  game.budget +=
+    reward;
+
+  updateReputation(
+    position,
+    champion
+  );
+
+  processSeasonDevelopment();
+
+  processContracts();
+
+  deductAnnualSalary();
+
+  addSeasonHistory(
+    position,
+    champion,
+    championName
+  );
+
+  /*
+    PENTING:
+    Jangan langsung membuat season baru.
+    Season tetap selesai supaya user bisa
+    masuk MSC/M-Series.
+  */
+
+  game.seasonComplete =
+    true;
+
+  game.phase =
+    "offseason";
+
+  updateWorldRankingAfterSeason(
+    position,
+    champion
+  );
+
+  updateMSCQualification();
+
+  saveGame(false);
+
+  renderDashboard();
+
+  alert(
+    `🏁 SEASON ${game.year} SELESAI!\n\n` +
+    `Posisi: #${position}\n` +
+    `Champion: ${championName}\n` +
+    `Reward: ${money(reward)}\n\n` +
+    `${
+      game.world.msc.qualified
+        ? "🌎 Lu qualified untuk MSC!"
+        : "Lu belum qualified MSC."
+    }\n\n` +
+    `Buka menu 🌎 World untuk lanjut.`
+  );
+
+}
+
+
+function calculateSeasonReward(
+  position,
+  championId
+) {
+
+  if (
+    championId ===
+    game.team
+  ) {
+
+    return 300000;
+  }
+
+  if (
+    position <= 3
+  ) {
+
+    return 180000;
+  }
+
+  if (
+    position <= 4
+  ) {
+
+    return 120000;
+  }
+
+  return 50000;
+
+}
+
+
+function updateReputation(
+  position,
+  championId
+) {
+
+  let change = 0;
+
+  if (
+    championId ===
+    game.team
+  ) {
+
+    change = 15;
+
+  } else if (
+    position === 2
+  ) {
+
+    change = 10;
+
+  } else if (
+    position === 3
+  ) {
+
+    change = 6;
+
+  } else if (
+    position <= 4
+  ) {
+
+    change = 2;
+
+  } else {
+
+    change = -5;
+
+  }
+
+  game.reputation =
+    clamp(
+      game.reputation + change,
+      0,
+      100
+    );
+
+}
+
+
+/* =========================================================
+   SALARY
+   ========================================================= */
+
+function deductAnnualSalary() {
+
+  const team =
+    getCurrentTeam();
+
+  if (!team) return;
+
+  const salary =
+    team.players.reduce(
+      (sum, player) =>
+        sum +
+        Number(
+          player.salary || 0
+        ),
+      0
+    );
+
+  /*
+    Salary dianggap biaya satu season.
+  */
+
+  game.budget -=
+    salary;
+
+  if (
+    game.budget < 0
+  ) {
+
+    game.budget = 0;
+
+    game.reputation =
+      clamp(
+        game.reputation - 5,
+        0,
+        100
+      );
+
+  }
+
+}
+
+
+/* =========================================================
+   PLAYER DEVELOPMENT
+   ========================================================= */
+
+function processSeasonDevelopment() {
+
+  const team =
+    getCurrentTeam();
+
+  if (!team) return;
+
+  /*
+    Hanya roster career user
+    yang berkembang.
+    Database global tidak dirusak.
+  */
+
+  team.players.forEach(
+    player => {
+
+      player.age =
+        Number(
+          player.age || 20
+        ) + 1;
+
+      const rating =
+        Number(
+          player.rating || 50
+        );
+
+      const potential =
+        Number(
+          player.potential ||
+          rating
+        );
+
+      let change = 0;
+
+      if (
+        rating < potential
+      ) {
+
+        if (
+          player.age <= 23
+        ) {
+
+          change =
+            random(1, 4);
+
+        } else if (
+          player.age <= 26
+        ) {
+
+          change =
+            random(0, 2);
+
+        }
+
+      }
+
+      if (
+        player.age >= 28
+      ) {
+
+        change -=
+          random(0, 3);
+
+      }
+
+      player.rating =
+        clamp(
+          rating + change,
+          1,
+          100
+        );
+
+      player.morale =
+        clamp(
+          Number(
+            player.morale || 70
+          ) +
+          random(-8, 8),
+          0,
+          100
+        );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   CONTRACTS
+   ========================================================= */
+
+function processContracts() {
+
+  const team =
+    getCurrentTeam();
+
+  if (!team) return;
+
+  team.players =
+    team.players.filter(
+      player => {
+
+        player.contractYears =
+          Math.max(
+            0,
+            Number(
+              player.contractYears || 1
+            ) - 1
+          );
+
+        if (
+          player.contractYears > 0
+        ) {
+
+          return true;
+        }
+
+        /*
+          Player kontrak habis.
+          65% kemungkinan minta
+          kontrak baru.
+        */
+
+        if (
+          Math.random() < 0.65
+        ) {
+
+          const exists =
+            game.requests.some(
+              request =>
+                request.playerId ===
+                player.id
+            );
+
+          if (!exists) {
+
+            game.requests.push({
+
+              playerId:
+                player.id,
+
+              playerName:
+                player.name,
+
+              type:
+                "contract",
+
+              demand:
+                Math.round(
+                  Number(
+                    player.salary || 10000
+                  ) * 1.25
+                )
+
+            });
+
+          }
+
+          player.contractYears =
+            1;
+
+          return true;
+
+        }
+
+        /*
+          Player meninggalkan team.
+        */
+
+        return false;
+
+      }
+    );
+
+}
+
+
+function acceptRequest(
+  playerId
+) {
+
+  const request =
+    game.requests.find(
+      r =>
+        r.playerId ===
+        playerId
+    );
+
+  if (!request) return;
+
+  const team =
+    getCurrentTeam();
+
+  const player =
+    team?.players.find(
+      p =>
+        p.id === playerId
+    );
+
+  if (!player) {
+
+    game.requests =
+      game.requests.filter(
+        r =>
+          r.playerId !==
+          playerId
+      );
+
+    saveGame(false);
+
+    return;
+  }
+
+  player.salary =
+    request.demand;
+
+  player.contractYears =
+    2;
+
+  player.morale =
+    clamp(
+      Number(
+        player.morale || 70
+      ) + 5,
+      0,
+      100
+    );
+
+  game.requests =
+    game.requests.filter(
+      r =>
+        r.playerId !==
+        playerId
+    );
+
+  saveGame(false);
+
+  renderManager();
+
+}
+
+
+function rejectRequest(
+  playerId
+) {
+
+  game.requests =
+    game.requests.filter(
+      r =>
+        r.playerId !==
+        playerId
+    );
+
+  const team =
+    getCurrentTeam();
+
+  if (team) {
+
+    team.players =
+      team.players.filter(
+        player =>
+          player.id !==
+          playerId
+      );
+
+  }
+
+  saveGame(false);
+
+  renderManager();
+
+}
+
+
+/* =========================================================
+   NEXT SEASON
+   ========================================================= */
+
+function advanceSeason() {
+
+  /*
+    Kalau season masih berjalan,
+    selesaikan semua pertandingan.
+  */
+
+  if (
+    !game.seasonComplete
+  ) {
+
+    game.schedule
+      .filter(
+        match =>
+          match.stage === "regular" &&
+          !match.played
+      )
+      .forEach(
+        match => {
+
+          const winner =
+            simulateGenericWinner(
+              match.home,
+              match.away
+            );
+
+          const score =
+            generateBO3(
+              winner,
+              match
+            );
+
+          finishMatchObject(
+            match,
+            winner,
+            score
+          );
+
+        }
+      );
+
+    checkRegularSeason();
+
+    /*
+      Jika user lolos playoff,
+      otomatis selesaikan playoff.
+    */
+
+    if (
+      !game.seasonComplete
+    ) {
+
+      simulatePlayoffsAutomatically();
+
+    }
+
+    return;
+  }
+
+  /*
+    Jangan bisa mulai season baru
+    kalau MSC masih belum selesai.
+  */
+
+  if (
+    game.world.msc.qualified &&
+    !game.world.msc.completed
+  ) {
+
+    alert(
+      "Selesaikan MSC dulu sebelum masuk season berikutnya."
+    );
+
+    return;
+  }
+
+  if (
+    game.world.mSeries.qualified &&
+    !game.world.mSeries.completed
+  ) {
+
+    alert(
+      "Selesaikan M-Series dulu sebelum masuk season berikutnya."
+    );
+
+    return;
+  }
+
+  game.year++;
+
+  game.phase =
+    "regular";
+
+  game.seasonComplete =
+    false;
+
+  game.currentMatch =
+    null;
+
+  game.lastResult =
+    null;
+
+  game.marketPlayers =
+    [];
+
+  game.scoutingResult =
+    null;
+
+  createSeason();
+
+  saveGame(false);
+
+  renderDashboard();
+
+  alert(
+    `🚀 Season ${game.year} dimulai!`
+  );
 
 }
 
@@ -2416,100 +3811,149 @@ function advanceDay() {
    WORLD RANKING
    ========================================================= */
 
-function createWorldState() {
-
-  return {
-
-    ranking:
-      calculateWorldRanking(),
-
-    msc: {
-
-      qualified: false,
-
-      completed: false,
-
-      champion: null,
-
-      matches: [],
-
-      teams: []
-
-    },
-
-    mSeries: {
-
-      qualified: false,
-
-      completed: false,
-
-      champion: null,
-
-      matches: [],
-
-      teams: []
-
-    }
-
-  };
-
-}
-
-
-function calculateWorldRanking() {
+function calculateInitialWorldRanking() {
 
   const teams = [];
 
-  getAllLeagues().forEach(league => {
+  getAllLeagues()
+    .forEach(league => {
 
-    league.teams.forEach(team => {
+      league.teams.forEach(
+        team => {
 
-      const rating =
-        teamRatingFromData(team);
+          teams.push({
 
-      const existing =
-        game.history.filter(
-          h =>
-            h.championId === team.id
-        ).length;
+            teamId:
+              team.id,
 
-      const points =
-        rating * 10 +
-        existing * 100;
+            name:
+              team.name,
 
-      teams.push({
+            region:
+              league.region,
 
-        teamId: team.id,
+            rating:
+              teamRatingFromSource(
+                team
+              ),
 
-        name: team.name,
+            points:
+              teamRatingFromSource(
+                team
+              ) * 10
 
-        region: league.region,
+          });
 
-        rating,
-
-        points
-
-      });
+        }
+      );
 
     });
 
-  });
-
   return teams.sort(
     (a, b) =>
-      b.points - a.points
+      b.points -
+      a.points
   );
 
 }
 
 
-function openWorld() {
+function teamRatingFromSource(
+  team
+) {
 
-  ensureWorldState();
+  if (
+    !team ||
+    !team.players ||
+    !team.players.length
+  ) {
 
-  renderWorld();
+    return 50;
+  }
 
-  showScreen("worldScreen");
+  const players =
+    [...team.players]
+      .sort(
+        (a, b) =>
+          Number(b.rating || 0) -
+          Number(a.rating || 0)
+      )
+      .slice(0, 5);
+
+  const total =
+    players.reduce(
+      (sum, p) =>
+        sum +
+        Number(p.rating || 0),
+      0
+    );
+
+  return Math.round(
+    total /
+    players.length
+  );
+
+}
+
+
+function createWorldState() {
+
+  return {
+
+    ranking:
+      calculateInitialWorldRanking(),
+
+    msc: {
+
+      qualified:
+        false,
+
+      completed:
+        false,
+
+      champion:
+        null,
+
+      championId:
+        null,
+
+      teams:
+        [],
+
+      matches:
+        [],
+
+      round:
+        1
+
+    },
+
+    mSeries: {
+
+      qualified:
+        false,
+
+      completed:
+        false,
+
+      champion:
+        null,
+
+      championId:
+        null,
+
+      teams:
+        [],
+
+      matches:
+        [],
+
+      round:
+        1
+
+    }
+
+  };
 
 }
 
@@ -2523,27 +3967,27 @@ function ensureWorldState() {
 
   }
 
-  if (!Array.isArray(game.world.ranking)) {
+  if (
+    !Array.isArray(
+      game.world.ranking
+    )
+  ) {
 
     game.world.ranking =
-      calculateWorldRanking();
+      calculateInitialWorldRanking();
 
   }
 
   if (!game.world.msc) {
 
     game.world.msc = {
-
       qualified: false,
-
       completed: false,
-
       champion: null,
-
+      championId: null,
+      teams: [],
       matches: [],
-
-      teams: []
-
+      round: 1
     };
 
   }
@@ -2551,20 +3995,316 @@ function ensureWorldState() {
   if (!game.world.mSeries) {
 
     game.world.mSeries = {
-
       qualified: false,
-
       completed: false,
-
       champion: null,
-
+      championId: null,
+      teams: [],
       matches: [],
-
-      teams: []
-
+      round: 1
     };
 
   }
+
+}
+
+
+function updateWorldRankingAfterSeason(
+  position,
+  championId
+) {
+
+  ensureWorldState();
+
+  const ranking =
+    game.world.ranking;
+
+  const user =
+    ranking.find(
+      team =>
+        team.teamId ===
+        game.team
+    );
+
+  if (user) {
+
+    user.rating =
+      teamRating(
+        game.team
+      );
+
+    let bonus =
+      Math.max(
+        0,
+        50 -
+        position * 5
+      );
+
+    if (
+      championId ===
+      game.team
+    ) {
+
+      bonus += 100;
+
+    }
+
+    user.points +=
+      bonus;
+
+  }
+
+  ranking.forEach(
+    team => {
+
+      if (
+        team.teamId ===
+        game.team
+      ) return;
+
+      const source =
+        getTeamSource(
+          team.teamId
+        );
+
+      if (!source) return;
+
+      team.rating =
+        teamRatingFromSource(
+          source.team
+        );
+
+      /*
+        Small yearly world movement.
+      */
+
+      team.points +=
+        Math.max(
+          0,
+          Math.round(
+            team.rating / 10
+          )
+        );
+
+    }
+  );
+
+  ranking.sort(
+    (a, b) =>
+      b.points -
+      a.points
+  );
+
+}
+
+
+/* =========================================================
+   WORLD SCREEN
+   ========================================================= */
+
+function ensureWorldButton() {
+
+  const grid =
+    document.querySelector(
+      ".menu-grid"
+    );
+
+  if (!grid) return;
+
+  if (
+    document.getElementById(
+      "worldMenuButton"
+    )
+  ) return;
+
+  const button =
+    document.createElement("button");
+
+  button.id =
+    "worldMenuButton";
+
+  button.onclick =
+    openWorld;
+
+  button.innerHTML =
+    `
+      <span>🌎</span>
+      <strong>World</strong>
+    `;
+
+  grid.appendChild(
+    button
+  );
+
+}
+
+
+function ensureWorldScreens() {
+
+  if (
+    !el("worldScreen")
+  ) {
+
+    const section =
+      document.createElement(
+        "section"
+      );
+
+    section.id =
+      "worldScreen";
+
+    section.className =
+      "screen";
+
+    section.innerHTML = `
+
+      <button
+        class="back"
+        onclick="backDashboard()"
+      >
+        ← Dashboard
+      </button>
+
+      <div class="page-title">
+
+        <h1>
+          🌎 World Stage
+        </h1>
+
+        <p>
+          Dunia kompetitif MLBB.
+        </p>
+
+      </div>
+
+      <div class="card">
+
+        <h3>
+          🌍 World Ranking
+        </h3>
+
+        <div id="worldRanking"></div>
+
+      </div>
+
+      <div class="card">
+
+        <h3>
+          🏆 MSC
+        </h3>
+
+        <div id="mscStatus"></div>
+
+        <button
+          class="primary"
+          onclick="openMSC()"
+        >
+          OPEN MSC
+        </button>
+
+      </div>
+
+      <div class="card">
+
+        <h3>
+          👑 M-Series
+        </h3>
+
+        <div id="mSeriesStatus"></div>
+
+        <button
+          class="primary"
+          onclick="openMSeries()"
+        >
+          OPEN M-SERIES
+        </button>
+
+      </div>
+
+      <div class="card">
+
+        <h3>
+          ✈️ International Transfer
+        </h3>
+
+        <div id="internationalTransfer"></div>
+
+      </div>
+
+      <button
+        class="primary"
+        onclick="advanceSeason()"
+      >
+        🚀 Start / Advance Season
+      </button>
+
+    `;
+
+    document.body.appendChild(
+      section
+    );
+
+  }
+
+
+  if (
+    !el("tournamentScreen")
+  ) {
+
+    const section =
+      document.createElement(
+        "section"
+      );
+
+    section.id =
+      "tournamentScreen";
+
+    section.className =
+      "screen";
+
+    section.innerHTML = `
+
+      <button
+        class="back"
+        onclick="openWorld()"
+      >
+        ← World
+      </button>
+
+      <div class="page-title">
+
+        <h1 id="tournamentTitle">
+          🏆 Tournament
+        </h1>
+
+        <p id="tournamentSubtitle"></p>
+
+      </div>
+
+      <div id="tournamentContent"></div>
+
+    `;
+
+    document.body.appendChild(
+      section
+    );
+
+  }
+
+}
+
+
+function openWorld() {
+
+  ensureWorldState();
+
+  ensureWorldScreens();
+
+  renderWorld();
+
+  showScreen(
+    "worldScreen"
+  );
 
 }
 
@@ -2574,44 +4314,47 @@ function renderWorld() {
   ensureWorldState();
 
   const ranking =
-    calculateWorldRanking();
-
-  game.world.ranking =
-    ranking;
+    game.world.ranking;
 
   const container =
-    document.getElementById(
-      "worldRanking"
-    );
+    el("worldRanking");
 
-  container.innerHTML =
-    ranking.map((team, index) => `
+  if (container) {
 
-      <div class="world-row">
+    container.innerHTML =
+      ranking.map(
+        (team, index) => `
 
-        <div class="rank">
-          #${index + 1}
-        </div>
+          <div class="world-row">
 
-        <div class="world-team">
+            <div class="rank">
+              #${index + 1}
+            </div>
 
-          <strong>
-            ${team.name}
-          </strong>
+            <div class="world-team">
 
-          <span>
-            ${team.region} • ${team.points} pts
-          </span>
+              <strong>
+                ${team.name}
+              </strong>
 
-        </div>
+              <span>
+                ${team.region}
+                •
+                ${team.points} pts
+              </span>
 
-        <div class="world-rating">
-          ${team.rating}
-        </div>
+            </div>
 
-      </div>
+            <div class="world-rating">
+              ${team.rating}
+            </div>
 
-    `).join("");
+          </div>
+
+        `
+      ).join("");
+
+  }
 
   renderTournamentStatus();
 
@@ -2620,158 +4363,27 @@ function renderWorld() {
 }
 
 
-function renderTournamentStatus() {
-
-  const msc =
-    document.getElementById("mscStatus");
-
-  const mseries =
-    document.getElementById("mSeriesStatus");
-
-  if (
-    game.world.msc.completed
-  ) {
-
-    msc.innerHTML = `
-      <p class="success">
-        🏆 Champion:
-        ${game.world.msc.champion}
-      </p>
-    `;
-
-  } else if (
-    game.world.msc.qualified
-  ) {
-
-    msc.innerHTML = `
-      <p class="warning">
-        Qualified — tournament tersedia.
-      </p>
-    `;
-
-  } else {
-
-    msc.innerHTML = `
-      <p class="empty">
-        Belum qualified.
-      </p>
-    `;
-
-  }
-
-  if (
-    game.world.mSeries.completed
-  ) {
-
-    mseries.innerHTML = `
-      <p class="success">
-        👑 Champion:
-        ${game.world.mSeries.champion}
-      </p>
-    `;
-
-  } else if (
-    game.world.mSeries.qualified
-  ) {
-
-    mseries.innerHTML = `
-      <p class="warning">
-        Qualified — tournament tersedia.
-      </p>
-    `;
-
-  } else {
-
-    mseries.innerHTML = `
-      <p class="empty">
-        Belum qualified.
-      </p>
-    `;
-
-  }
-
-}
-
-
 /* =========================================================
-   MSC QUALIFICATION
+   MSC
    ========================================================= */
 
-function checkMSCQualification() {
+function updateMSCQualification() {
+
+  ensureWorldState();
 
   const ranking =
     getSortedStandings();
 
   const position =
     ranking.findIndex(
-      s => s.teamId === game.team
+      row =>
+        row.teamId ===
+        game.team
     ) + 1;
 
-  return position > 0 &&
-    position <= 3;
-
-}
-
-
-function openMSC() {
-
-  if (
-    game.world.msc.completed
-  ) {
-
-    renderTournament(
-      "msc"
-    );
-
-    showScreen("tournamentScreen");
-
-    return;
-  }
-
-  if (
-    !checkMSCQualification()
-  ) {
-
-    alert(
-      "Lu harus finish Top 3 regular season untuk membuka MSC."
-    );
-
-    return;
-  }
-
-  if (
-    game.world.msc.qualified
-  ) {
-
-    renderTournament(
-      "msc"
-    );
-
-    showScreen("tournamentScreen");
-
-    return;
-  }
-
-  const teams =
-    getMSCTeams();
-
   game.world.msc.qualified =
-    true;
-
-  game.world.msc.teams =
-    teams;
-
-  game.world.msc.matches =
-    createKnockoutMatches(
-      teams,
-      "msc"
-    );
-
-  saveGame(false);
-
-  renderTournament("msc");
-
-  showScreen("tournamentScreen");
+    position > 0 &&
+    position <= 3;
 
 }
 
@@ -2781,36 +4393,142 @@ function getMSCTeams() {
   const ranking =
     getSortedStandings();
 
-  const topLocal =
+  const local =
     ranking
       .slice(0, 3)
       .map(
-        s => s.teamId
+        row =>
+          row.teamId
       );
+
+  const result =
+    [...local];
 
   const world =
-    calculateWorldRanking();
-
-  const foreign =
-    world
-      .filter(
-        team =>
-          !topLocal.includes(
-            team.teamId
-          ) &&
-          team.region !==
-            getCurrentLeague().region
-      )
-      .slice(0, 5)
-      .map(
-        team =>
-          team.teamId
+    [...game.world.ranking]
+      .sort(
+        (a, b) =>
+          b.points -
+          a.points
       );
 
-  return [
-    ...topLocal,
-    ...foreign
-  ].slice(0, 8);
+  /*
+    Ambil tim dari region lain.
+  */
+
+  world.forEach(
+    team => {
+
+      if (
+        result.length >= 8
+      ) return;
+
+      if (
+        result.includes(
+          team.teamId
+        )
+      ) return;
+
+      if (
+        team.region ===
+        getCurrentLeague()?.region
+      ) return;
+
+      result.push(
+        team.teamId
+      );
+
+    }
+  );
+
+  /*
+    Kalau foreign region kurang,
+    isi dengan world ranking lain.
+  */
+
+  world.forEach(
+    team => {
+
+      if (
+        result.length >= 8
+      ) return;
+
+      if (
+        !result.includes(
+          team.teamId
+        )
+      ) {
+
+        result.push(
+          team.teamId
+        );
+
+      }
+
+    }
+  );
+
+  return result.slice(
+    0,
+    8
+  );
+
+}
+
+
+function openMSC() {
+
+  ensureWorldState();
+
+  if (
+    !game.seasonComplete
+  ) {
+
+    alert(
+      "Selesaikan regular season dan playoff dulu."
+    );
+
+    return;
+  }
+
+  if (
+    !game.world.msc.qualified
+  ) {
+
+    alert(
+      "Lu belum qualified MSC. Minimal finish Top 3."
+    );
+
+    return;
+  }
+
+  if (
+    !game.world.msc.teams.length
+  ) {
+
+    game.world.msc.teams =
+      getMSCTeams();
+
+    game.world.msc.matches =
+      createKnockoutMatches(
+        game.world.msc.teams,
+        "msc"
+      );
+
+    game.world.msc.round =
+      1;
+
+    saveGame(false);
+
+  }
+
+  renderTournament(
+    "msc"
+  );
+
+  showScreen(
+    "tournamentScreen"
+  );
 
 }
 
@@ -2819,61 +4537,7 @@ function getMSCTeams() {
    M-SERIES
    ========================================================= */
 
-function openMSeries() {
-
-  if (
-    !game.world.msc.completed
-  ) {
-
-    alert(
-      "M-Series baru terbuka setelah MSC selesai."
-    );
-
-    return;
-  }
-
-  if (
-    game.world.mSeries.completed ||
-    game.world.mSeries.qualified
-  ) {
-
-    renderTournament(
-      "mseries"
-    );
-
-    showScreen("tournamentScreen");
-
-    return;
-  }
-
-  const teams =
-    getMSeriesTeams();
-
-  game.world.mSeries.qualified =
-    true;
-
-  game.world.mSeries.teams =
-    teams;
-
-  game.world.mSeries.matches =
-    createKnockoutMatches(
-      teams,
-      "mseries"
-    );
-
-  saveGame(false);
-
-  renderTournament("mseries");
-
-  showScreen("tournamentScreen");
-
-}
-
-
 function getMSeriesTeams() {
-
-  const ranking =
-    calculateWorldRanking();
 
   const result = [];
 
@@ -2887,29 +4551,88 @@ function getMSeriesTeams() {
 
   }
 
-  ranking.forEach(team => {
+  game.world.ranking
+    .forEach(
+      team => {
 
-    if (
-      result.length >= 8
-    ) return;
+        if (
+          result.length >= 8
+        ) return;
 
-    if (
-      !result.includes(team.teamId)
-    ) {
+        if (
+          !result.includes(
+            team.teamId
+          )
+        ) {
 
-      result.push(team.teamId);
+          result.push(
+            team.teamId
+          );
 
-    }
+        }
 
-  });
+      }
+    );
 
-  return result.slice(0, 8);
+  return result.slice(
+    0,
+    8
+  );
+
+}
+
+
+function openMSeries() {
+
+  ensureWorldState();
+
+  if (
+    !game.world.msc.completed
+  ) {
+
+    alert(
+      "Selesaikan MSC dulu."
+    );
+
+    return;
+  }
+
+  if (
+    !game.world.mSeries.teams.length
+  ) {
+
+    game.world.mSeries.teams =
+      getMSeriesTeams();
+
+    game.world.mSeries.matches =
+      createKnockoutMatches(
+        game.world.mSeries.teams,
+        "mseries"
+      );
+
+    game.world.mSeries.round =
+      1;
+
+    game.world.mSeries.qualified =
+      true;
+
+    saveGame(false);
+
+  }
+
+  renderTournament(
+    "mseries"
+  );
+
+  showScreen(
+    "tournamentScreen"
+  );
 
 }
 
 
 /* =========================================================
-   TOURNAMENT SYSTEM
+   TOURNAMENT
    ========================================================= */
 
 function createKnockoutMatches(
@@ -2919,37 +4642,51 @@ function createKnockoutMatches(
 
   const matches = [];
 
+  /*
+    Pastikan selalu 8 tim.
+  */
+
+  const list =
+    teams.slice(0, 8);
+
   for (
     let i = 0;
-    i < teams.length;
+    i < list.length;
     i += 2
   ) {
 
-    if (!teams[i + 1]) break;
+    if (
+      !list[i + 1]
+    ) continue;
 
     matches.push({
 
       id:
-        `${type}-r1-${i}`,
+        `${type}-r1-${i / 2}`,
 
       tournament:
         type,
 
-      round: 1,
+      round:
+        1,
 
       home:
-        teams[i],
+        list[i],
 
       away:
-        teams[i + 1],
+        list[i + 1],
 
-      played: false,
+      played:
+        false,
 
-      winner: null,
+      winner:
+        null,
 
-      homeScore: null,
+      homeScore:
+        null,
 
-      awayScore: null
+      awayScore:
+        null
 
     });
 
@@ -2960,34 +4697,80 @@ function createKnockoutMatches(
 }
 
 
-function renderTournament(type) {
+function getTournamentData(
+  type
+) {
 
-  const isMSC =
-    type === "msc";
+  return type === "msc"
+    ? game.world.msc
+    : game.world.mSeries;
+
+}
+
+
+function getTournamentRound(
+  data
+) {
+
+  const unplayed =
+    data.matches.filter(
+      match =>
+        !match.played
+    );
+
+  if (!unplayed.length) {
+    return null;
+  }
+
+  return Math.min(
+    ...unplayed.map(
+      match =>
+        match.round
+    )
+  );
+
+}
+
+
+function renderTournament(
+  type
+) {
+
+  ensureWorldScreens();
 
   const data =
-    isMSC
-      ? game.world.msc
-      : game.world.mSeries;
+    getTournamentData(
+      type
+    );
 
-  document.getElementById(
-    "tournamentTitle"
-  ).textContent =
-    isMSC
-      ? "🏆 MSC"
-      : "👑 M-Series";
+  const title =
+    el("tournamentTitle");
 
-  document.getElementById(
-    "tournamentSubtitle"
-  ).textContent =
-    isMSC
-      ? "Mid Season Cup"
-      : "World Championship";
+  const subtitle =
+    el("tournamentSubtitle");
 
   const container =
-    document.getElementById(
-      "tournamentContent"
-    );
+    el("tournamentContent");
+
+  if (!container) return;
+
+  if (title) {
+
+    title.textContent =
+      type === "msc"
+        ? "🏆 MSC"
+        : "👑 M-Series";
+
+  }
+
+  if (subtitle) {
+
+    subtitle.textContent =
+      type === "msc"
+        ? "Mid Season Cup"
+        : "World Championship";
+
+  }
 
   if (
     data.completed
@@ -2995,15 +4778,23 @@ function renderTournament(type) {
 
     container.innerHTML = `
 
-      <div class="card result-card">
+      <div class="card">
 
         <h2>
-          🏆 Champion
+          🏆 CHAMPION
         </h2>
 
         <div class="big-score">
           ${data.champion}
         </div>
+
+        <p style="margin-top:15px">
+          ${
+            type === "msc"
+              ? "Reward: Rp400.000"
+              : "Reward: Rp1.000.000"
+          }
+        </p>
 
       </div>
 
@@ -3013,53 +4804,72 @@ function renderTournament(type) {
 
   }
 
-  if (!data.matches.length) {
+  const currentRound =
+    getTournamentRound(
+      data
+    );
+
+  if (
+    currentRound == null
+  ) {
 
     container.innerHTML =
-      `<div class="empty">Tournament belum dimulai.</div>`;
+      `<div class="empty">Tournament selesai.</div>`;
 
     return;
   }
+
+  const matches =
+    data.matches.filter(
+      match =>
+        match.round ===
+        currentRound
+    );
 
   container.innerHTML = `
 
     <div class="card">
 
       <h3>
-        ${data.matches[0].round === 1
-          ? "Quarterfinal / Round 1"
-          : "Next Round"}
+        ${
+          currentRound === 1
+            ? "Quarterfinal"
+            : currentRound === 2
+              ? "Semifinal"
+              : "Grand Final"
+        }
       </h3>
 
       <button
         class="primary"
         onclick="playInternationalTournament('${type}')"
       >
-        ⚔️ PLAY TOURNAMENT
+        ⚔️ PLAY ROUND
       </button>
 
     </div>
 
-    ${data.matches.map(match => {
-
-      const home =
-        getTeamSource(match.home);
-
-      const away =
-        getTeamSource(match.away);
-
-      return `
+    ${matches.map(
+      match => `
 
         <div class="tournament-match">
 
           <h4>
-            Round ${match.round}
+            ${
+              currentRound === 1
+                ? "Quarterfinal"
+                : currentRound === 2
+                  ? "Semifinal"
+                  : "Grand Final"
+            }
           </h4>
 
           <div class="tournament-teams">
 
             <span>
-              ${home?.team.name || "-"}
+              ${getTeamDisplayName(
+                match.home
+              )}
             </span>
 
             <strong>
@@ -3071,150 +4881,165 @@ function renderTournament(type) {
             </strong>
 
             <span>
-              ${away?.team.name || "-"}
+              ${getTeamDisplayName(
+                match.away
+              )}
             </span>
 
           </div>
 
         </div>
 
-      `;
-
-    }).join("")}
+      `
+    ).join("")}
 
   `;
 
 }
 
 
-function playInternationalTournament(type) {
+function playInternationalTournament(
+  type
+) {
 
   const data =
-    type === "msc"
-      ? game.world.msc
-      : game.world.mSeries;
-
-  const currentRound =
-    Math.min(
-      ...data.matches
-        .filter(m => !m.played)
-        .map(m => m.round)
+    getTournamentData(
+      type
     );
+
+  const round =
+    getTournamentRound(
+      data
+    );
+
+  if (round == null) return;
 
   const matches =
     data.matches.filter(
-      m =>
-        !m.played &&
-        m.round === currentRound
+      match =>
+        match.round === round &&
+        !match.played
     );
 
-  matches.forEach(match => {
+  matches.forEach(
+    match => {
 
-    const winner =
-      simulateGenericWinner(
-        match.home,
-        match.away
-      );
+      const winner =
+        simulateGenericWinner(
+          match.home,
+          match.away
+        );
 
-    const score =
-      generateBO3(
-        winner,
-        match
-      );
+      const score =
+        generateBO3(
+          winner,
+          match
+        );
 
-    match.played = true;
+      match.played =
+        true;
 
-    match.winner = winner;
+      match.winner =
+        winner;
 
-    match.homeScore =
-      score.home;
+      match.homeScore =
+        score.home;
 
-    match.awayScore =
-      score.away;
+      match.awayScore =
+        score.away;
 
-  });
+    }
+  );
 
   const winners =
     data.matches
       .filter(
-        m =>
-          m.round === currentRound &&
-          m.played
+        match =>
+          match.round ===
+            round &&
+          match.played
       )
       .map(
-        m => m.winner
+        match =>
+          match.winner
       );
 
-  const remaining =
-    data.matches.some(
-      m =>
-        !m.played
+  /*
+    1 winner = champion.
+  */
+
+  if (
+    winners.length === 1
+  ) {
+
+    completeInternationalTournament(
+      type,
+      winners[0]
     );
 
-  if (!remaining) {
-
-    if (winners.length === 1) {
-
-      completeInternationalTournament(
-        type,
-        winners[0]
-      );
-
-      return;
-
-    }
-
-    const nextRound =
-      currentRound + 1;
-
-    data.matches =
-      data.matches.filter(
-        m =>
-          m.round !== currentRound
-      );
-
-    for (
-      let i = 0;
-      i < winners.length;
-      i += 2
-    ) {
-
-      if (!winners[i + 1]) break;
-
-      data.matches.push({
-
-        id:
-          `${type}-r${nextRound}-${i}`,
-
-        tournament:
-          type,
-
-        round:
-          nextRound,
-
-        home:
-          winners[i],
-
-        away:
-          winners[i + 1],
-
-        played: false,
-
-        winner: null,
-
-        homeScore: null,
-
-        awayScore: null
-
-      });
-
-    }
+    return;
 
   }
 
+  /*
+    Buat ronde baru.
+    8 → 4 → 2 → 1.
+  */
+
+  const nextRound =
+    round + 1;
+
+  for (
+    let i = 0;
+    i < winners.length;
+    i += 2
+  ) {
+
+    if (
+      !winners[i + 1]
+    ) continue;
+
+    data.matches.push({
+
+      id:
+        `${type}-r${nextRound}-${i / 2}`,
+
+      tournament:
+        type,
+
+      round:
+        nextRound,
+
+      home:
+        winners[i],
+
+      away:
+        winners[i + 1],
+
+      played:
+        false,
+
+      winner:
+        null,
+
+      homeScore:
+        null,
+
+      awayScore:
+        null
+
+    });
+
+  }
+
+  data.round =
+    nextRound;
+
   saveGame(false);
 
-  renderTournament(type);
+  renderTournament(
+    type
+  );
 
 }
 
@@ -3225,24 +5050,50 @@ function completeInternationalTournament(
 ) {
 
   const data =
-    type === "msc"
-      ? game.world.msc
-      : game.world.mSeries;
+    getTournamentData(
+      type
+    );
 
-  const champion =
-    getTeamSource(championId);
+  const championName =
+    getTeamDisplayName(
+      championId
+    );
 
-  data.completed = true;
+  data.completed =
+    true;
 
   data.championId =
     championId;
 
   data.champion =
-    champion?.team.name || championId;
+    championName;
 
-  if (type === "msc") {
+  /*
+    Tambahkan poin world ranking.
+  */
 
-    game.budget += 400000;
+  const ranked =
+    game.world.ranking.find(
+      team =>
+        team.teamId ===
+        championId
+    );
+
+  if (ranked) {
+
+    ranked.points +=
+      type === "msc"
+        ? 250
+        : 500;
+
+  }
+
+  if (
+    type === "msc"
+  ) {
+
+    game.budget +=
+      400000;
 
     game.reputation =
       clamp(
@@ -3253,7 +5104,8 @@ function completeInternationalTournament(
 
   } else {
 
-    game.budget += 1000000;
+    game.budget +=
+      1000000;
 
     game.reputation =
       clamp(
@@ -3266,16 +5118,104 @@ function completeInternationalTournament(
 
   addInternationalHistory(
     type,
-    data.champion
+    championName,
+    championId
   );
 
   saveGame(false);
 
   alert(
-    `🏆 ${type === "msc" ? "MSC" : "M-Series"} Champion:\n\n${data.champion}`
+    `🏆 ${type === "msc" ? "MSC" : "M-Series"} CHAMPION!\n\n${championName}`
   );
 
-  renderTournament(type);
+  renderTournament(
+    type
+  );
+
+}
+
+
+/* =========================================================
+   TOURNAMENT STATUS
+   ========================================================= */
+
+function renderTournamentStatus() {
+
+  const msc =
+    el("mscStatus");
+
+  const mseries =
+    el("mSeriesStatus");
+
+  if (msc) {
+
+    if (
+      game.world.msc.completed
+    ) {
+
+      msc.innerHTML = `
+        <p class="success">
+          🏆 Champion:
+          ${game.world.msc.champion}
+        </p>
+      `;
+
+    } else if (
+      game.world.msc.qualified
+    ) {
+
+      msc.innerHTML = `
+        <p class="warning">
+          ✅ Qualified — MSC tersedia.
+        </p>
+      `;
+
+    } else {
+
+      msc.innerHTML = `
+        <p class="empty">
+          Belum qualified.
+        </p>
+      `;
+
+    }
+
+  }
+
+  if (mseries) {
+
+    if (
+      game.world.mSeries.completed
+    ) {
+
+      mseries.innerHTML = `
+        <p class="success">
+          👑 Champion:
+          ${game.world.mSeries.champion}
+        </p>
+      `;
+
+    } else if (
+      game.world.mSeries.qualified
+    ) {
+
+      mseries.innerHTML = `
+        <p class="warning">
+          ✅ M-Series tersedia.
+        </p>
+      `;
+
+    } else {
+
+      mseries.innerHTML = `
+        <p class="empty">
+          Belum tersedia.
+        </p>
+      `;
+
+    }
+
+  }
 
 }
 
@@ -3284,10 +5224,60 @@ function completeInternationalTournament(
    INTERNATIONAL TRANSFER
    ========================================================= */
 
+function getInternationalPlayers() {
+
+  const currentRegion =
+    getCurrentLeague()?.region;
+
+  const players = [];
+
+  getAllLeagues()
+    .forEach(league => {
+
+      if (
+        league.region ===
+        currentRegion
+      ) return;
+
+      league.teams.forEach(
+        team => {
+
+          team.players.forEach(
+            player => {
+
+              players.push({
+
+                ...deepClone(player),
+
+                sourceTeamId:
+                  team.id,
+
+                sourceLeagueId:
+                  league.id
+
+              });
+
+            }
+          );
+
+        }
+      );
+
+    });
+
+  return players.sort(
+    (a, b) =>
+      Number(b.rating || 0) -
+      Number(a.rating || 0)
+  );
+
+}
+
+
 function renderInternationalTransfer() {
 
   const container =
-    document.getElementById(
+    el(
       "internationalTransfer"
     );
 
@@ -3306,88 +5296,51 @@ function renderInternationalTransfer() {
   }
 
   container.innerHTML =
-    players.map(player => `
+    players.map(
+      player => `
 
-      <div class="player-card">
+        <div class="player-card">
 
-        <div class="player-top">
+          <div class="player-top">
 
-          <div>
-            <div class="player-name">
-              ${player.name}
+            <div>
+
+              <div class="player-name">
+                ${player.name}
+              </div>
+
+              <div class="player-role">
+                ${player.role}
+              </div>
+
             </div>
 
-            <div class="player-role">
-              ${player.role}
+            <div class="rating">
+              ${player.rating}
             </div>
+
           </div>
 
-          <div class="rating">
-            ${player.rating}
+          <div class="player-meta">
+
+            <span class="badge">
+              ${player.nationality}
+            </span>
+
+            <span class="badge">
+              Age ${player.age}
+            </span>
+
+            <span class="badge">
+              POT ${player.potential}
+            </span>
+
           </div>
 
         </div>
 
-        <div class="player-meta">
-
-          <span class="badge">
-            ${player.nationality}
-          </span>
-
-          <span class="badge">
-            Age ${player.age}
-          </span>
-
-          <span class="badge">
-            POT ${player.potential}
-          </span>
-
-        </div>
-
-      </div>
-
-    `).join("");
-
-}
-
-
-function getInternationalPlayers() {
-
-  const region =
-    getCurrentLeague()?.region;
-
-  const players = [];
-
-  getAllLeagues().forEach(league => {
-
-    if (league.region === region) {
-      return;
-    }
-
-    league.teams.forEach(team => {
-
-      team.players.forEach(player => {
-
-        players.push({
-
-          ...player,
-
-          sourceTeamId: team.id,
-
-          sourceLeagueId: league.id
-
-        });
-
-      });
-
-    });
-
-  });
-
-  return players.sort(
-    (a, b) =>
-      b.rating - a.rating
-  );
+      `
+    ).join("");
 
 }
 
@@ -3398,10 +5351,14 @@ function getInternationalPlayers() {
 
 function addSeasonHistory(
   position,
-  champion
+  championId,
+  championName
 ) {
 
   game.history.unshift({
+
+    type:
+      "season",
 
     year:
       game.year,
@@ -3414,12 +5371,10 @@ function addSeasonHistory(
 
     position,
 
-    champion,
+    champion:
+      championName,
 
-    championId:
-      champion === getCurrentTeamName()
-        ? game.team
-        : null
+    championId
 
   });
 
@@ -3428,10 +5383,14 @@ function addSeasonHistory(
 
 function addInternationalHistory(
   tournament,
-  champion
+  championName,
+  championId
 ) {
 
   game.history.unshift({
+
+    type:
+      "international",
 
     year:
       game.year,
@@ -3444,7 +5403,10 @@ function addInternationalHistory(
 
     tournament,
 
-    champion
+    champion:
+      championName,
+
+    championId
 
   });
 
@@ -3455,7 +5417,9 @@ function openHistory() {
 
   renderHistory();
 
-  showScreen("historyScreen");
+  showScreen(
+    "historyScreen"
+  );
 
 }
 
@@ -3463,11 +5427,13 @@ function openHistory() {
 function renderHistory() {
 
   const container =
-    document.getElementById(
-      "historyList"
-    );
+    el("historyList");
 
-  if (!game.history.length) {
+  if (!container) return;
+
+  if (
+    !game.history.length
+  ) {
 
     container.innerHTML =
       `<div class="empty">Belum ada history.</div>`;
@@ -3476,19 +5442,53 @@ function renderHistory() {
   }
 
   container.innerHTML =
-    game.history.map(history => {
+    game.history.map(
+      history => {
 
-      if (history.tournament) {
+        if (
+          history.type ===
+          "international"
+        ) {
+
+          return `
+
+            <div class="history-card">
+
+              <strong>
+                ${history.year}
+                •
+                ${history.tournament.toUpperCase()}
+              </strong>
+
+              <p style="margin-top:8px">
+                Champion:
+                ${history.champion}
+              </p>
+
+            </div>
+
+          `;
+
+        }
 
         return `
 
           <div class="history-card">
 
             <strong>
-              ${history.year} • ${history.tournament.toUpperCase()}
+              Season ${history.year}
             </strong>
 
-            <p style="margin-top:8px;color:#8992a5">
+            <p style="margin-top:8px">
+              ${history.teamName}
+            </p>
+
+            <p style="margin-top:6px;color:#8992a5">
+              Regular Season:
+              #${history.position}
+            </p>
+
+            <p style="margin-top:6px;color:#8992a5">
               Champion:
               ${history.champion}
             </p>
@@ -3498,43 +5498,18 @@ function renderHistory() {
         `;
 
       }
-
-      return `
-
-        <div class="history-card">
-
-          <strong>
-            Season ${history.year}
-          </strong>
-
-          <p style="margin-top:8px">
-            ${history.teamName}
-          </p>
-
-          <p style="margin-top:6px;color:#8992a5">
-            Regular Season:
-            #${history.position}
-          </p>
-
-          <p style="margin-top:6px;color:#8992a5">
-            Champion:
-            ${history.champion}
-          </p>
-
-        </div>
-
-      `;
-
-    }).join("");
+    ).join("");
 
 }
 
 
 /* =========================================================
-   SAVE / LOAD
+   SAVE
    ========================================================= */
 
-function saveGame(showMessage = false) {
+function saveGame(
+  showMessage = false
+) {
 
   try {
 
@@ -3544,7 +5519,11 @@ function saveGame(showMessage = false) {
     );
 
     if (showMessage) {
-      alert("Game berhasil disimpan.");
+
+      alert(
+        "Game berhasil disimpan."
+      );
+
     }
 
   } catch (error) {
@@ -3559,6 +5538,10 @@ function saveGame(showMessage = false) {
 }
 
 
+/* =========================================================
+   LOAD
+   ========================================================= */
+
 function loadGame() {
 
   try {
@@ -3568,30 +5551,42 @@ function loadGame() {
         SAVE_KEY
       );
 
-    if (!saved) return false;
+    if (!saved) {
+      return false;
+    }
 
     const parsed =
       JSON.parse(saved);
 
-    if (!parsed || !parsed.careerStarted) {
+    if (
+      !parsed ||
+      !parsed.careerStarted
+    ) {
+
       return false;
     }
 
     game = {
 
-      ...game,
+      ...deepClone(
+        DEFAULT_GAME
+      ),
 
       ...parsed,
 
       world: {
 
-        ...game.world,
+        ...deepClone(
+          DEFAULT_GAME.world
+        ),
 
         ...(parsed.world || {}),
 
         msc: {
 
-          ...game.world.msc,
+          ...deepClone(
+            DEFAULT_GAME.world.msc
+          ),
 
           ...(parsed.world?.msc || {})
 
@@ -3599,7 +5594,9 @@ function loadGame() {
 
         mSeries: {
 
-          ...game.world.mSeries,
+          ...deepClone(
+            DEFAULT_GAME.world.mSeries
+          ),
 
           ...(parsed.world?.mSeries || {})
 
@@ -3608,6 +5605,42 @@ function loadGame() {
       }
 
     };
+
+    /*
+      Backward compatibility
+      dengan save lama.
+    */
+
+    if (
+      !game.currentTeamData
+    ) {
+
+      const source =
+        getTeamSource(
+          game.team
+        );
+
+      if (source) {
+
+        game.currentTeamData =
+          deepClone(
+            source.team
+          );
+
+      }
+
+    }
+
+    if (
+      !game.phase
+    ) {
+
+      game.phase =
+        game.seasonComplete
+          ? "offseason"
+          : "regular";
+
+    }
 
     return true;
 
@@ -3631,12 +5664,12 @@ function loadGame() {
 
 function restartGame() {
 
-  const confirmRestart =
+  const yes =
     confirm(
-      "Yakin mau restart career? Semua save akan dihapus."
+      "Yakin mau restart career? Semua save V0.9 akan dihapus."
     );
 
-  if (!confirmRestart) return;
+  if (!yes) return;
 
   localStorage.removeItem(
     SAVE_KEY
@@ -3653,6 +5686,8 @@ function restartGame() {
 
 function init() {
 
+  ensureWorldScreens();
+
   renderCountries();
 
   const loaded =
@@ -3661,7 +5696,8 @@ function init() {
   if (loaded) {
 
     selectedTarget =
-      game.target || "top3";
+      game.target ||
+      "top3";
 
     renderDashboard();
 
