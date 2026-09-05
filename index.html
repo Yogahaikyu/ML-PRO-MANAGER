@@ -1,268 +1,609 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#080b14">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
+
+  <meta
+    name="theme-color"
+    content="#111111"
+  >
 
   <title>MLBB Pro Manager</title>
 
-  <link rel="stylesheet" href="style.css">
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 </head>
 
 <body>
 
-  <div class="app">
+  <!-- =====================================================
+       COUNTRY SCREEN
+  ====================================================== -->
 
-    <!-- HEADER -->
-    <header class="header">
-      <div>
-        <div class="logo">MLBB</div>
-        <div class="logo-sub">PRO MANAGER</div>
+  <section
+    id="countryScreen"
+    class="screen"
+  >
+
+    <div class="page-container">
+
+      <div class="game-logo">
+        <h1>MLBB</h1>
+        <p>PRO MANAGER</p>
       </div>
 
-      <div class="version">V0.1</div>
-    </header>
+      <h2>Select Country</h2>
+
+      <p class="subtitle">
+        Choose the country where you want to start your career.
+      </p>
+
+      <div
+        id="countryList"
+        class="selection-list"
+      ></div>
+
+    </div>
+
+  </section>
 
 
-    <!-- SCREEN 1 -->
-    <main id="countryScreen" class="screen active">
+  <!-- =====================================================
+       LEAGUE SCREEN
+  ====================================================== -->
 
-      <div class="hero">
-        <span class="badge">CAREER MODE</span>
+  <section
+    id="leagueScreen"
+    class="screen hidden"
+  >
 
-        <h1>
-          BUILD YOUR<br>
-          <span>LEGACY</span>
-        </h1>
+    <div class="page-container">
 
-        <p>
-          Mulai kariermu sebagai manager tim Mobile Legends
-          dan bawa timmu menuju juara dunia.
-        </p>
-      </div>
+      <div class="screen-header">
 
-
-      <section class="selection-card">
-
-        <div class="step">
-          <span>01</span>
-          <div>
-            <small>LANGKAH PERTAMA</small>
-            <h2>Pilih Negara / Region</h2>
-          </div>
-        </div>
-
-        <div id="countryList" class="option-list"></div>
-
-      </section>
-
-    </main>
-
-
-    <!-- SCREEN 2 -->
-    <main id="leagueScreen" class="screen">
-
-      <button class="back-button" onclick="backToCountry()">
-        ← Kembali
-      </button>
-
-      <div class="page-title">
-        <span class="badge">REGION TERPILIH</span>
-        <h1 id="selectedCountryTitle">Indonesia</h1>
-        <p>Pilih liga tempat kamu ingin memulai karier.</p>
-      </div>
-
-      <section class="selection-card">
-
-        <div class="step">
-          <span>02</span>
-          <div>
-            <small>PILIH KOMPETISI</small>
-            <h2>Liga</h2>
-          </div>
-        </div>
-
-        <div id="leagueList" class="option-list"></div>
-
-      </section>
-
-    </main>
-
-
-    <!-- SCREEN 3 -->
-    <main id="teamScreen" class="screen">
-
-      <button class="back-button" onclick="backToLeague()">
-        ← Kembali
-      </button>
-
-      <div class="page-title">
-        <span class="badge">KOMPETISI</span>
-        <h1 id="selectedLeagueTitle">MPL Indonesia</h1>
-        <p>Pilih tim yang ingin kamu kelola.</p>
-      </div>
-
-      <section class="selection-card">
-
-        <div class="step">
-          <span>03</span>
-          <div>
-            <small>PILIH TIM</small>
-            <h2>Team Selection</h2>
-          </div>
-        </div>
-
-        <div id="teamList" class="team-list"></div>
-
-      </section>
-
-    </main>
-
-
-    <!-- SCREEN 4 -->
-    <main id="dashboardScreen" class="screen">
-
-      <div class="dashboard-header">
+        <button
+          class="back-button"
+          onclick="showScreen('countryScreen')"
+        >
+          ←
+        </button>
 
         <div>
-          <span class="badge">MANAGER CAREER</span>
-          <h1 id="dashboardTeam">Team</h1>
-          <p id="dashboardLeague">League</p>
-        </div>
-
-        <div class="season">
-          <small>SEASON</small>
-          <strong>2026</strong>
+          <h1>Select League</h1>
+          <p class="subtitle">
+            Choose your league.
+          </p>
         </div>
 
       </div>
 
+      <div
+        id="leagueList"
+        class="selection-list"
+      ></div>
 
-      <section class="stats-grid">
+    </div>
 
-        <div class="stat-card">
-          <span>💰</span>
-          <small>BUDGET</small>
-          <strong>$500K</strong>
+  </section>
+
+
+  <!-- =====================================================
+       TEAM SCREEN
+  ====================================================== -->
+
+  <section
+    id="teamScreen"
+    class="screen hidden"
+  >
+
+    <div class="page-container">
+
+      <div class="screen-header">
+
+        <button
+          class="back-button"
+          onclick="showScreen('leagueScreen')"
+        >
+          ←
+        </button>
+
+        <div>
+          <h1>Select Team</h1>
+
+          <p class="subtitle">
+            Choose the team you want to manage.
+          </p>
         </div>
 
-        <div class="stat-card">
-          <span>🏆</span>
-          <small>TROPHIES</small>
-          <strong>0</strong>
+      </div>
+
+      <div
+        id="teamList"
+        class="selection-list"
+      ></div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       DASHBOARD
+  ====================================================== -->
+
+  <section
+    id="dashboardScreen"
+    class="screen hidden"
+  >
+
+    <div class="dashboard-container">
+
+
+      <!-- TOP BAR -->
+
+      <header class="top-bar">
+
+        <div>
+
+          <div class="small-label">
+            TEAM
+          </div>
+
+          <h1 id="teamName">
+            MLBB Team
+          </h1>
+
         </div>
 
-        <div class="stat-card">
-          <span>📈</span>
-          <small>REPUTATION</small>
-          <strong>50</strong>
-        </div>
+        <button
+          class="icon-button"
+          onclick="restartGame()"
+          title="Restart Game"
+        >
+          ⚙
+        </button>
 
-        <div class="stat-card">
-          <span>🎯</span>
-          <small>OBJECTIVE</small>
-          <strong>TOP 4</strong>
+      </header>
+
+
+      <!-- SEASON INFO -->
+
+      <section class="dashboard-card">
+
+        <div class="stat-grid">
+
+          <div class="stat-box">
+
+            <span>
+              SEASON
+            </span>
+
+            <strong id="seasonYear">
+              2026
+            </strong>
+
+          </div>
+
+
+          <div class="stat-box">
+
+            <span>
+              BUDGET
+            </span>
+
+            <strong id="budget">
+              Rp 500.000
+            </strong>
+
+          </div>
+
+
+          <div class="stat-box">
+
+            <span>
+              REPUTATION
+            </span>
+
+            <strong id="reputation">
+              50
+            </strong>
+
+          </div>
+
         </div>
 
       </section>
 
-
-      <section class="menu-section">
-
-        <h2>Manager Menu</h2>
-
-        <div class="menu-grid">
-
-          <button class="menu-card">
-            <span>👥</span>
-            <strong>Roster</strong>
-            <small>Kelola pemain</small>
-          </button>
-
-          <button class="menu-card">
-            <span>🔄</span>
-            <strong>Transfer</strong>
-            <small>Transfer pemain</small>
-          </button>
-
-          <button class="menu-card">
-            <span>🏋️</span>
-            <strong>Training</strong>
-            <small>Latih tim</small>
-          </button>
-
-          <button class="menu-card">
-            <span>📅</span>
-            <strong>Schedule</strong>
-            <small>Jadwal pertandingan</small>
-          </button>
-
-          <button class="menu-card">
-            <span>📊</span>
-            <strong>Standings</strong>
-            <small>Klasemen liga</small>
-          </button>
-
-          <button class="menu-card">
-            <span>🔎</span>
-            <strong>Scouting</strong>
-            <small>Cari pemain</small>
-          </button>
-
-        </div>
 
       <!-- NEXT MATCH -->
 
-<section class="game-section">
+      <section class="game-section">
 
-  <h2>Next Match</h2>
+        <div class="section-title">
 
-  <div id="nextMatch"></div>
+          <div>
+            <span class="small-label">
+              MATCHDAY
+            </span>
 
-</section>
+            <h2>
+              Next Match
+            </h2>
+          </div>
 
+        </div>
 
-<!-- ROSTER -->
+        <div id="nextMatch"></div>
 
-<section class="game-section">
-
-  <h2>Starting 5 / Roster</h2>
-
-  <div id="rosterContainer"></div>
-
-</section>
-
-
-<!-- STANDINGS -->
-
-<section class="game-section">
-
-  <h2>League Standings</h2>
-
-  <div id="standingsContainer"></div>
-
-</section>
+      </section>
 
 
-      <button class="restart-button" onclick="restartGame()">
-        ↻ Mulai Karier Baru
+      <!-- ROSTER -->
+
+      <section class="game-section">
+
+        <div class="section-title">
+
+          <div>
+            <span class="small-label">
+              TEAM
+            </span>
+
+            <h2>
+              Starting 5 / Roster
+            </h2>
+          </div>
+
+        </div>
+
+        <div id="rosterContainer"></div>
+
+      </section>
+
+
+      <!-- STANDINGS -->
+
+      <section class="game-section">
+
+        <div class="section-title">
+
+          <div>
+            <span class="small-label">
+              LEAGUE
+            </span>
+
+            <h2>
+              League Standings
+            </h2>
+
+          </div>
+
+        </div>
+
+        <div id="standingsContainer"></div>
+
+      </section>
+
+
+      <!-- MENU -->
+
+      <section class="game-section">
+
+        <div class="section-title">
+
+          <div>
+            <span class="small-label">
+              MANAGEMENT
+            </span>
+
+            <h2>
+              Manager Menu
+            </h2>
+
+          </div>
+
+        </div>
+
+
+        <div class="menu-grid">
+
+
+          <button
+            id="menuRoster"
+            class="menu-button"
+            onclick="renderRoster()"
+          >
+
+            <span class="menu-icon">
+              👥
+            </span>
+
+            <span>
+              Roster
+            </span>
+
+          </button>
+
+
+          <button
+            id="menuTransfer"
+            class="menu-button"
+            onclick="showTransferMarket()"
+          >
+
+            <span class="menu-icon">
+              💰
+            </span>
+
+            <span>
+              Transfer
+            </span>
+
+          </button>
+
+
+          <button
+            id="menuSchedule"
+            class="menu-button"
+            onclick="showSchedule()"
+          >
+
+            <span class="menu-icon">
+              📅
+            </span>
+
+            <span>
+              Schedule
+            </span>
+
+          </button>
+
+
+          <button
+            id="menuScouting"
+            class="menu-button"
+            onclick="showScouting()"
+          >
+
+            <span class="menu-icon">
+              🔎
+            </span>
+
+            <span>
+              Scouting
+            </span>
+
+          </button>
+
+
+        </div>
+
+      </section>
+
+
+      <!-- SEASON CONTROL -->
+
+      <section class="game-section">
+
+        <button
+          id="advanceSeasonButton"
+          class="secondary-button"
+          onclick="advanceSeason()"
+        >
+          ⏭ ADVANCE SEASON
+        </button>
+
+      </section>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       MATCH SCREEN
+  ====================================================== -->
+
+  <section
+    id="matchScreen"
+    class="screen hidden"
+  >
+
+    <div class="dashboard-container">
+
+
+      <!-- MATCH HEADER -->
+
+      <header class="match-header">
+
+        <button
+          class="back-button"
+          onclick="backToDashboard()"
+        >
+          ←
+        </button>
+
+        <div>
+
+          <div class="small-label">
+            SEASON MATCH
+          </div>
+
+          <h1>
+            BO3 MATCH
+          </h1>
+
+        </div>
+
+      </header>
+
+
+      <!-- MATCH INFO -->
+
+      <div
+        id="matchInfo"
+        class="match-info"
+      >
+
+        <span>
+          Regular Season
+        </span>
+
+      </div>
+
+
+      <!-- TEAMS -->
+
+      <div class="match-teams">
+
+
+        <!-- MY TEAM -->
+
+        <div class="match-team my-team">
+
+          <div class="team-logo">
+            YOU
+          </div>
+
+          <h2 id="myTeamName">
+            Your Team
+          </h2>
+
+          <div
+            id="myTeamRating"
+            class="team-rating"
+          >
+            Rating: 0
+          </div>
+
+        </div>
+
+
+        <!-- VS -->
+
+        <div class="match-vs">
+          VS
+        </div>
+
+
+        <!-- ENEMY -->
+
+        <div class="match-team enemy-team">
+
+          <div class="team-logo">
+            AI
+          </div>
+
+          <h2 id="enemyTeamName">
+            Enemy
+          </h2>
+
+          <div
+            id="enemyTeamRating"
+            class="team-rating"
+          >
+            Rating: 0
+          </div>
+
+        </div>
+
+
+      </div>
+
+
+      <!-- WIN PROBABILITY -->
+
+      <div class="match-probability">
+
+        <span>
+          YOUR WIN CHANCE
+        </span>
+
+        <strong id="winProbability">
+          50%
+        </strong>
+
+      </div>
+
+
+      <!-- STARTING FIVE -->
+
+      <section class="game-section">
+
+        <div class="section-title">
+
+          <div>
+
+            <span class="small-label">
+              LINEUP
+            </span>
+
+            <h2>
+              Starting 5
+            </h2>
+
+          </div>
+
+        </div>
+
+        <div id="matchStarters"></div>
+
+      </section>
+
+
+      <!-- PLAY BUTTON -->
+
+      <button
+        id="playMatchButton"
+        class="primary-button"
+        onclick="simulateCurrentMatch()"
+      >
+        ▶ PLAY MATCH
       </button>
 
-    </main>
 
-  </div>
+      <!-- RESULT -->
 
+      <div
+        id="matchResult"
+        class="hidden"
+      ></div>
+
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       JAVASCRIPT DATA
+  ====================================================== -->
 
   <script src="data/countries.js"></script>
 
-<script src="data/mpl-id.js"></script>
-<script src="data/mpl-ph.js"></script>
-<script src="data/mpl-kh.js"></script>
+  <script src="data/mpl-id.js"></script>
 
-<script src="app.js"></script>
+  <script src="data/mpl-ph.js"></script>
+
+  <script src="data/mpl-kh.js"></script>
+
+
+  <!-- =====================================================
+       MAIN GAME
+  ====================================================== -->
+
+  <script src="app.js"></script>
+
 
 </body>
-  
-  
-</html>
+
+              </html>
