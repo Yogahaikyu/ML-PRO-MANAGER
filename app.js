@@ -1,14 +1,10 @@
 /*
 =========================================
 MLBB PRO MANAGER
-VERSION 0.2
+VERSION 0.3
+MATCH ENGINE
 =========================================
 */
-
-
-// =======================================
-// DATABASE
-// =======================================
 
 const leagues = [
   MPL_ID_2026,
@@ -29,10 +25,15 @@ let game = {
   team: null,
 
   budget: 500000,
-
   reputation: 50,
 
   standings: {},
+
+  schedule: [],
+
+  currentMatch: 0,
+
+  starters: [],
 
   careerStarted: false
 };
@@ -76,7 +77,9 @@ function showScreen(screen) {
       element.classList.remove("active");
     });
 
-  screen.classList.add("active");
+  if (screen) {
+    screen.classList.add("active");
+  }
 
   window.scrollTo({
     top: 0,
@@ -90,6 +93,8 @@ function showScreen(screen) {
 // =======================================
 
 function renderCountries() {
+
+  if (!countryList) return;
 
   countryList.innerHTML = "";
 
@@ -115,7 +120,6 @@ function renderCountries() {
     };
 
     countryList.appendChild(button);
-
   });
 }
 
@@ -133,9 +137,15 @@ function selectCountry(countryId) {
 
   if (!game.country) return;
 
-  document.getElementById(
-    "selectedCountryTitle"
-  ).textContent = game.country.name;
+  const title =
+    document.getElementById(
+      "selectedCountryTitle"
+    );
+
+  if (title) {
+    title.textContent =
+      game.country.name;
+  }
 
   renderLeagues();
 
@@ -148,6 +158,8 @@ function selectCountry(countryId) {
 // =======================================
 
 function renderLeagues() {
+
+  if (!leagueList) return;
 
   leagueList.innerHTML = "";
 
@@ -164,13 +176,17 @@ function renderLeagues() {
       const button =
         document.createElement("button");
 
-      button.className = "option-button";
+      button.className =
+        "option-button";
 
       button.innerHTML = `
-        <strong>${league.name}</strong>
+        <strong>
+          ${league.name}
+        </strong>
+
         <small>
-          Season ${league.season} •
-          ${league.teams.length} teams
+          Season ${league.season}
+          • ${league.teams.length} teams
         </small>
       `;
 
@@ -179,7 +195,6 @@ function renderLeagues() {
       };
 
       leagueList.appendChild(button);
-
     }
   );
 }
@@ -198,9 +213,15 @@ function selectLeague(leagueId) {
 
   if (!game.league) return;
 
-  document.getElementById(
-    "selectedLeagueTitle"
-  ).textContent = game.league.name;
+  const title =
+    document.getElementById(
+      "selectedLeagueTitle"
+    );
+
+  if (title) {
+    title.textContent =
+      game.league.name;
+  }
 
   renderTeams();
 
@@ -214,6 +235,8 @@ function selectLeague(leagueId) {
 
 function renderTeams() {
 
+  if (!teamList) return;
+
   teamList.innerHTML = "";
 
   game.league.teams.forEach(team => {
@@ -221,7 +244,8 @@ function renderTeams() {
     const button =
       document.createElement("button");
 
-    button.className = "team-button";
+    button.className =
+      "team-button";
 
     button.innerHTML = `
       <div class="team-logo">
@@ -229,10 +253,13 @@ function renderTeams() {
       </div>
 
       <div>
-        <strong>${team.name}</strong>
+        <strong>
+          ${team.name}
+        </strong>
 
         <small>
-          ${team.players.length} pemain
+          ${team.players.length}
+          pemain
         </small>
       </div>
     `;
@@ -242,7 +269,6 @@ function renderTeams() {
     };
 
     teamList.appendChild(button);
-
   });
 }
 
@@ -264,125 +290,584 @@ function selectTeam(teamId) {
 
   createStandings();
 
-  updateDashboard();
+  createStarters();
+
+  createSeasonSchedule();
 
   saveGame();
+
+  renderDashboard();
 
   showScreen(dashboardScreen);
 }
 
 
 // =======================================
-// DASHBOARD
+// CREATE STARTERS
 // =======================================
 
-function updateDashboard() {
+function createStarters() {
 
-  document.getElementById(
-    "dashboardTeam"
-  ).textContent = game.team.name;
+  if (!game.team) return;
 
-  document.getElementById(
-    "dashboardLeague"
-  ).textContent =
-    `${game.league.name} • ${game.country.name}`;
+  const players =
+    [...game.team.players];
 
-  const season =
-    document.querySelector(".season strong");
+  players.sort(
+    (a, b) =>
+      b.rating - a.rating
+  );
 
-  if (season) {
-    season.textContent = game.year;
-  }
-
-  updateBudget();
-
-  renderManagerInfo();
+  game.starters =
+    players
+      .slice(0, 5)
+      .map(player => player.id);
 }
 
 
 // =======================================
-// BUDGET
+// GET STARTERS
 // =======================================
 
-function updateBudget() {
+function getStarters() {
 
-  const budgetElement =
-    document.querySelector(
-      ".stat-card strong"
+  if (!game.team) return [];
+
+  return game.team.players.filter(
+    player =>
+      game.starters.includes(
+        player.id
+      )
+  );
+}
+
+
+// =======================================
+// CHANGE STARTER
+// =======================================
+
+function toggleStarter(playerId) {
+
+  if (
+    game.starters.includes(playerId)
+  ) {
+
+    if (game.starters.length <= 5) {
+      alert(
+        "Tim utama harus memiliki 5 pemain."
+      );
+      return;
+    }
+
+    game.starters =
+      game.starters.filter(
+        id => id !== playerId
+      );
+
+    saveGame();
+
+    return;
+  }
+
+  if (game.starters.length >= 5) {
+
+    alert(
+      "Maksimal 5 pemain utama."
     );
 
-  if (!budgetElement) return;
+    return;
+  }
 
-  budgetElement.textContent =
-    formatMoney(game.budget);
+  game.starters.push(playerId);
+
+  saveGame();
 }
 
 
 // =======================================
-// MONEY
+// TEAM RATING
 // =======================================
 
-function formatMoney(value) {
+function calculateTeamRating(team) {
 
-  if (value >= 1000000) {
+  if (!team) return 0;
 
-    return "$" +
-      (value / 1000000)
-        .toFixed(1) +
-      "M";
+  let players;
 
+  if (team.id === game.team.id) {
+
+    players =
+      getStarters();
+
+  } else {
+
+    players =
+      [...team.players]
+        .sort(
+          (a, b) =>
+            b.rating - a.rating
+        )
+        .slice(0, 5);
   }
 
-  if (value >= 1000) {
+  if (!players.length) return 0;
 
-    return "$" +
-      Math.round(value / 1000) +
-      "K";
-
-  }
-
-  return "$" + value;
-}
-
-
-// =======================================
-// MANAGER INFO
-// =======================================
-
-function renderManagerInfo() {
-
-  const cards =
-    document.querySelectorAll(
-      ".stat-card strong"
+  const total =
+    players.reduce(
+      (sum, player) =>
+        sum + player.rating,
+      0
     );
 
-  if (cards.length >= 4) {
+  let rating =
+    total / players.length;
 
-    cards[1].textContent =
-      game.team.trophies || 0;
 
-    cards[2].textContent =
-      game.reputation;
+  // =====================================
+  // ROLE BALANCE
+  // =====================================
 
-    cards[3].textContent =
-      "TOP 4";
+  const roles =
+    players.map(
+      player => player.role
+    );
+
+  const requiredRoles = [
+    "EXP",
+    "Jungle",
+    "Mid",
+    "Gold",
+    "Roam"
+  ];
+
+  const uniqueRoles =
+    new Set(roles).size;
+
+  if (uniqueRoles === 5) {
+
+    rating += 3;
+
+  } else if (uniqueRoles >= 4) {
+
+    rating += 1;
+
+  } else {
+
+    rating -= 3;
+  }
+
+
+  // =====================================
+  // CHEMISTRY
+  // =====================================
+
+  if (players.length === 5) {
+
+    rating += 2;
+  }
+
+
+  return rating;
+}
+
+
+// =======================================
+// WIN PROBABILITY
+// =======================================
+
+function calculateWinProbability(
+  myTeam,
+  enemyTeam
+) {
+
+  const myRating =
+    calculateTeamRating(myTeam);
+
+  const enemyRating =
+    calculateTeamRating(enemyTeam);
+
+  const difference =
+    myRating - enemyRating;
+
+
+  /*
+  Base 50%.
+
+  Setiap 1 rating difference
+  memberi sekitar 2% perubahan.
+
+  Dibatasi 10% - 90%.
+  */
+
+  let probability =
+    50 + difference * 2;
+
+
+  // Randomness
+
+  probability +=
+    (Math.random() * 10) - 5;
+
+
+  probability =
+    Math.max(
+      10,
+      Math.min(
+        90,
+        probability
+      )
+    );
+
+
+  return probability;
+}
+
+
+// =======================================
+// CREATE SCHEDULE
+// =======================================
+
+function createSeasonSchedule() {
+
+  if (!game.league || !game.team) {
+    return;
+  }
+
+  game.schedule = [];
+
+  game.currentMatch = 0;
+
+  const teams =
+    game.league.teams;
+
+
+  /*
+  Setiap tim bertemu satu kali.
+
+  Untuk tim yang dipilih,
+  kita hanya membutuhkan
+  pertandingan tim player.
+  */
+
+  teams.forEach(
+    opponent => {
+
+      if (
+        opponent.id ===
+        game.team.id
+      ) {
+        return;
+      }
+
+      game.schedule.push({
+
+        week:
+          game.schedule.length + 1,
+
+        home:
+          game.team.id,
+
+        away:
+          opponent.id,
+
+        played: false,
+
+        result: null
+
+      });
+    }
+  );
+}
+
+
+// =======================================
+// NEXT MATCH
+// =======================================
+
+function getNextMatch() {
+
+  return game.schedule.find(
+    match =>
+      !match.played
+  );
+}
+
+
+// =======================================
+// GET TEAM
+// =======================================
+
+function getTeamById(teamId) {
+
+  return game.league.teams.find(
+    team =>
+      team.id === teamId
+  );
+}
+
+
+// =======================================
+// PLAY MATCH
+// =======================================
+
+function playNextMatch() {
+
+  if (!game.careerStarted) {
+
+    alert(
+      "Karier belum dimulai."
+    );
+
+    return;
+  }
+
+
+  const match =
+    getNextMatch();
+
+
+  if (!match) {
+
+    alert(
+      "Semua pertandingan regular season telah selesai."
+    );
+
+    return;
+  }
+
+
+  if (
+    game.starters.length !== 5
+  ) {
+
+    alert(
+      "Pilih 5 pemain utama terlebih dahulu."
+    );
+
+    return;
+  }
+
+
+  const enemy =
+    getTeamById(
+      match.away
+    );
+
+
+  if (!enemy) return;
+
+
+  const probability =
+    calculateWinProbability(
+      game.team,
+      enemy
+    );
+
+
+  const random =
+    Math.random() * 100;
+
+
+  const playerWin =
+    random < probability;
+
+
+  let playerScore;
+  let enemyScore;
+
+
+  // =====================================
+  // BO3
+  // =====================================
+
+  if (playerWin) {
+
+    const closeMatch =
+      Math.random() < 0.42;
+
+    if (closeMatch) {
+
+      playerScore = 2;
+      enemyScore = 1;
+
+    } else {
+
+      playerScore = 2;
+      enemyScore = 0;
+    }
+
+  } else {
+
+    const closeMatch =
+      Math.random() < 0.42;
+
+    if (closeMatch) {
+
+      playerScore = 1;
+      enemyScore = 2;
+
+    } else {
+
+      playerScore = 0;
+      enemyScore = 2;
+    }
+  }
+
+
+  // =====================================
+  // UPDATE MATCH
+  // =====================================
+
+  match.played = true;
+
+  match.result = {
+
+    playerScore,
+
+    enemyScore,
+
+    playerWin,
+
+    probability:
+
+      Math.round(
+        probability
+      )
+
+  };
+
+
+  updateStandings(
+    game.team.id,
+    enemy.id,
+    playerScore,
+    enemyScore
+  );
+
+
+  game.currentMatch++;
+
+
+  // =====================================
+  // REPUTATION
+  // =====================================
+
+  if (playerWin) {
+
+    game.reputation +=
+      playerScore === 2 &&
+      enemyScore === 0
+        ? 2
+        : 1;
+
+  } else {
+
+    game.reputation -= 1;
+  }
+
+
+  game.reputation =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        game.reputation
+      )
+    );
+
+
+  saveGame();
+
+  renderDashboard();
+
+  showMatchResult(
+    enemy,
+    playerScore,
+    enemyScore,
+    probability
+  );
+}
+
+
+// =======================================
+// UPDATE STANDINGS
+// =======================================
+
+function updateStandings(
+  myTeamId,
+  enemyTeamId,
+  myScore,
+  enemyScore
+) {
+
+  const myStanding =
+    game.standings[
+      myTeamId
+    ];
+
+  const enemyStanding =
+    game.standings[
+      enemyTeamId
+    ];
+
+
+  if (!myStanding ||
+      !enemyStanding) {
+
+    return;
+  }
+
+
+  myStanding.played++;
+  enemyStanding.played++;
+
+
+  myStanding.gameWins +=
+    myScore;
+
+  myStanding.gameLosses +=
+    enemyScore;
+
+  enemyStanding.gameWins +=
+    enemyScore;
+
+  enemyStanding.gameLosses +=
+    myScore;
+
+
+  if (myScore > enemyScore) {
+
+    myStanding.wins++;
+    myStanding.points += 3;
+
+    enemyStanding.losses++;
+
+  } else {
+
+    myStanding.losses++;
+
+    enemyStanding.wins++;
+    enemyStanding.points += 3;
   }
 }
 
 
 // =======================================
-// STANDINGS
+// CREATE STANDINGS
 // =======================================
 
 function createStandings() {
 
   game.standings = {};
 
+  if (!game.league) return;
+
   game.league.teams.forEach(team => {
 
     game.standings[team.id] = {
 
-      teamId: team.id,
+      teamId:
+        team.id,
 
       played: 0,
 
@@ -395,245 +880,450 @@ function createStandings() {
       gameWins: 0,
 
       gameLosses: 0
-
     };
-
   });
-
 }
 
 
 // =======================================
-// GET ROSTER
+// MATCH RESULT
 // =======================================
 
-function getRoster() {
-
-  if (!game.team) return [];
-
-  return game.team.players || [];
-}
-
-
-// =======================================
-// PLAYER DEVELOPMENT
-// =======================================
-
-function developPlayers() {
-
-  if (!game.league) return;
-
-  game.league.teams.forEach(team => {
-
-    team.players.forEach(player => {
-
-      player.age += 1;
-
-      let change = 0;
-
-
-      // -------------------------------
-      // YOUNG PLAYER
-      // -------------------------------
-
-      if (player.age <= 21) {
-
-        const roll =
-          Math.random();
-
-        if (roll < 0.60) {
-
-          change =
-            Math.floor(
-              Math.random() * 3
-            ) + 1;
-
-        } else if (roll < 0.72) {
-
-          change = -1;
-
-        }
-
-      }
-
-
-      // -------------------------------
-      // PRIME
-      // -------------------------------
-
-      else if (player.age <= 25) {
-
-        const roll =
-          Math.random();
-
-        if (roll < 0.45) {
-
-          change = 1;
-
-        } else if (roll < 0.55) {
-
-          change = -1;
-
-        }
-
-      }
-
-
-      // -------------------------------
-      // VETERAN
-      // -------------------------------
-
-      else {
-
-        const roll =
-          Math.random();
-
-        if (roll < 0.35) {
-
-          change = -1;
-
-        } else if (roll < 0.50) {
-
-          change = -2;
-
-        }
-
-      }
-
-
-      // -------------------------------
-      // POTENTIAL BONUS
-      // -------------------------------
-
-      if (
-        player.potential >= 94 &&
-        change > 0
-      ) {
-
-        change += 1;
-
-      }
-
-
-      // -------------------------------
-      // RATING
-      // -------------------------------
-
-      player.rating += change;
-
-
-      // MIN / MAX
-
-      if (player.rating < 50) {
-
-        player.rating = 50;
-
-      }
-
-      if (player.rating > player.potential) {
-
-        player.rating =
-          player.potential;
-
-      }
-
-    });
-
-  });
-
-}
-
-
-// =======================================
-// END SEASON
-// =======================================
-
-function advanceSeason() {
-
-  if (!game.careerStarted) {
-
-    alert(
-      "Mulai karier terlebih dahulu."
-    );
-
-    return;
-
-  }
-
-
-  const confirmAdvance =
-    confirm(
-      `Akhiri Season ${game.year} dan lanjut ke ${game.year + 1}?`
-    );
-
-  if (!confirmAdvance) return;
-
-
-  // DEVELOPMENT
-
-  developPlayers();
-
-
-  // YEAR
-
-  game.year += 1;
-
-
-  // RESET STANDINGS
-
-  createStandings();
-
-
-  // SAVE
-
-  saveGame();
-
-
-  updateDashboard();
+function showMatchResult(
+  enemy,
+  playerScore,
+  enemyScore,
+  probability
+) {
+
+  const result =
+    playerScore > enemyScore
+      ? "MENANG 🏆"
+      : "KALAH";
 
 
   alert(
-    `Season ${game.year - 1} selesai.\n\n` +
-    `Pemain telah mengalami perkembangan berdasarkan umur dan potential.\n\n` +
-    `Selamat datang di Season ${game.year}!`
-  );
+    `${game.team.name}\n` +
+    `vs\n` +
+    `${enemy.name}\n\n` +
 
+    `HASIL BO3\n` +
+
+    `${game.team.short} ` +
+    `${playerScore} - ` +
+    `${enemyScore} ` +
+    `${enemy.short}\n\n` +
+
+    `${result}\n\n` +
+
+    `Win Probability: ` +
+    `${Math.round(probability)}%`
+  );
 }
 
 
 // =======================================
-// ROSTER VIEW
+// RENDER DASHBOARD
 // =======================================
 
-function showRoster() {
+function renderDashboard() {
 
-  const roster =
-    getRoster();
+  updateDashboard();
 
-  if (!roster.length) return;
+  renderNextMatch();
+
+  renderRoster();
+
+  renderStandings();
+}
 
 
-  let message =
-    `${game.team.name} - ROSTER\n\n`;
+// =======================================
+// DASHBOARD BASIC
+// =======================================
+
+function updateDashboard() {
+
+  const teamElement =
+    document.getElementById(
+      "dashboardTeam"
+    );
+
+  if (teamElement &&
+      game.team) {
+
+    teamElement.textContent =
+      game.team.name;
+  }
 
 
-  roster.forEach(
-    (player, index) => {
+  const leagueElement =
+    document.getElementById(
+      "dashboardLeague"
+    );
 
-      message +=
-        `${index + 1}. ` +
-        `${player.name}\n` +
-        `   ${player.role} | ` +
-        `Age ${player.age}\n` +
-        `   Rating ${player.rating} | ` +
-        `Potential ${player.potential}\n` +
-        `   Salary $${player.salary}/bulan\n\n`;
+  if (
+    leagueElement &&
+    game.league
+  ) {
 
+    leagueElement.textContent =
+      `${game.league.name} • ` +
+      `${game.country.name}`;
+  }
+
+
+  const season =
+    document.querySelector(
+      ".season strong"
+    );
+
+  if (season) {
+
+    season.textContent =
+      game.year;
+  }
+
+
+  updateStats();
+}
+
+
+// =======================================
+// STATS
+// =======================================
+
+function updateStats() {
+
+  const standing =
+    game.standings[
+      game.team?.id
+    ];
+
+
+  if (!standing) return;
+
+
+  const statCards =
+    document.querySelectorAll(
+      ".stat-card strong"
+    );
+
+
+  if (statCards.length >= 4) {
+
+    statCards[0].textContent =
+      formatMoney(
+        game.budget
+      );
+
+    statCards[1].textContent =
+      standing.wins;
+
+    statCards[2].textContent =
+      game.reputation;
+
+    statCards[3].textContent =
+      `${standing.points} PTS`;
+  }
+}
+
+
+// =======================================
+// NEXT MATCH UI
+// =======================================
+
+function renderNextMatch() {
+
+  const container =
+    document.getElementById(
+      "nextMatch"
+    );
+
+  if (!container) return;
+
+
+  const match =
+    getNextMatch();
+
+
+  if (!match) {
+
+    container.innerHTML = `
+      <div class="match-card">
+        <strong>
+          REGULAR SEASON SELESAI
+        </strong>
+
+        <small>
+          Semua pertandingan sudah dimainkan.
+        </small>
+      </div>
+    `;
+
+    return;
+  }
+
+
+  const enemy =
+    getTeamById(
+      match.away
+    );
+
+
+  container.innerHTML = `
+
+    <div class="match-card">
+
+      <small>
+        MATCH WEEK ${match.week}
+      </small>
+
+      <h3>
+        ${game.team.name}
+        VS
+        ${enemy.name}
+      </h3>
+
+      <p>
+        Format: BO3
+      </p>
+
+      <button
+        class="primary-button"
+        onclick="playNextMatch()"
+      >
+        PLAY MATCH
+      </button>
+
+    </div>
+
+  `;
+}
+
+
+// =======================================
+// ROSTER UI
+// =======================================
+
+function renderRoster() {
+
+  const container =
+    document.getElementById(
+      "rosterContainer"
+    );
+
+  if (!container ||
+      !game.team) {
+    return;
+  }
+
+
+  container.innerHTML = `
+
+    <div class="section-title">
+      STARTING 5
+    </div>
+
+  `;
+
+
+  game.team.players.forEach(
+    player => {
+
+      const starter =
+        game.starters.includes(
+          player.id
+        );
+
+
+      const card =
+        document.createElement(
+          "div"
+        );
+
+      card.className =
+        "player-card";
+
+
+      card.innerHTML = `
+
+        <div>
+
+          <strong>
+            ${player.name}
+          </strong>
+
+          <small>
+            ${player.role}
+            • OVR ${player.rating}
+          </small>
+
+        </div>
+
+        <button>
+          ${
+            starter
+              ? "STARTER"
+              : "BENCH"
+          }
+        </button>
+
+      `;
+
+
+      card
+        .querySelector("button")
+        .onclick = () => {
+
+          toggleStarter(
+            player.id
+          );
+
+          renderRoster();
+        };
+
+
+      container.appendChild(
+        card
+      );
+    }
+  );
+}
+
+
+// =======================================
+// STANDINGS UI
+// =======================================
+
+function renderStandings() {
+
+  const container =
+    document.getElementById(
+      "standingsContainer"
+    );
+
+  if (!container ||
+      !game.league) {
+    return;
+  }
+
+
+  const rows =
+    Object.values(
+      game.standings
+    );
+
+
+  rows.sort(
+    (a, b) => {
+
+      if (
+        b.points !==
+        a.points
+      ) {
+
+        return (
+          b.points -
+          a.points
+        );
+      }
+
+
+      const bDiff =
+        b.gameWins -
+        b.gameLosses;
+
+
+      const aDiff =
+        a.gameWins -
+        a.gameLosses;
+
+
+      return bDiff - aDiff;
     }
   );
 
 
-  alert(message);
+  container.innerHTML = `
+
+    <div class="section-title">
+      STANDINGS
+    </div>
+
+  `;
+
+
+  rows.forEach(
+    (row, index) => {
+
+      const team =
+        getTeamById(
+          row.teamId
+        );
+
+
+      const item =
+        document.createElement(
+          "div"
+        );
+
+
+      item.className =
+        "standing-row";
+
+
+      item.innerHTML = `
+
+        <span>
+          #${index + 1}
+        </span>
+
+        <strong>
+          ${team.short}
+        </strong>
+
+        <span>
+          ${row.wins}W
+          -
+          ${row.losses}L
+        </span>
+
+        <span>
+          ${row.points} PTS
+        </span>
+
+      `;
+
+
+      container.appendChild(
+        item
+      );
+    }
+  );
+}
+
+
+// =======================================
+// ROSTER POPUP
+// =======================================
+
+function showRoster() {
+
+  renderRoster();
+
+  const container =
+    document.getElementById(
+      "rosterContainer"
+    );
+
+  if (container) {
+
+    container.scrollIntoView({
+      behavior: "smooth"
+    });
+
+  }
 }
 
 
@@ -649,25 +1339,39 @@ function showTransferMarket() {
   let players = [];
 
 
-  game.league.teams.forEach(team => {
+  game.league.teams.forEach(
+    team => {
 
-    if (team.id === game.team.id) return;
+      if (
+        team.id ===
+        game.team.id
+      ) {
+        return;
+      }
 
-    team.players.forEach(player => {
 
-      players.push({
-        ...player,
-        teamName: team.name
-      });
+      team.players.forEach(
+        player => {
 
-    });
+          players.push({
 
-  });
+            ...player,
+
+            teamName:
+              team.name
+
+          });
+
+        }
+      );
+    }
+  );
 
 
   players.sort(
     (a, b) =>
-      b.rating - a.rating
+      b.rating -
+      a.rating
   );
 
 
@@ -681,158 +1385,16 @@ function showTransferMarket() {
       (player, index) => {
 
         message +=
-          `${index + 1}. ${player.name}\n` +
-          `${player.teamName}\n` +
-          `${player.role} | ` +
-          `OVR ${player.rating}\n\n`;
+          `${index + 1}. ` +
+          `${player.name}\n` +
 
+          `${player.teamName}\n` +
+
+          `${player.role} | ` +
+
+          `OVR ${player.rating}\n\n`;
       }
     );
-
-
-  alert(message);
-}
-
-
-// =======================================
-// MENU
-// =======================================
-
-function setupMenu() {
-
-  const buttons =
-    document.querySelectorAll(
-      ".menu-card"
-    );
-
-
-  buttons.forEach(button => {
-
-    const title =
-      button.querySelector(
-        "strong"
-      );
-
-    if (!title) return;
-
-
-    const name =
-      title.textContent
-        .trim()
-        .toLowerCase();
-
-
-    if (name === "roster") {
-
-      button.onclick =
-        showRoster;
-
-    }
-
-
-    if (name === "transfer") {
-
-      button.onclick =
-        showTransferMarket;
-
-    }
-
-
-    if (name === "training") {
-
-      button.style.display =
-        "none";
-
-    }
-
-
-    if (name === "schedule") {
-
-      button.onclick =
-        showSchedule;
-
-    }
-
-
-    if (name === "standings") {
-
-      button.onclick =
-        showStandings;
-
-    }
-
-
-    if (name === "scouting") {
-
-      button.onclick =
-        showScouting;
-
-    }
-
-  });
-
-}
-
-
-// =======================================
-// SCHEDULE
-// =======================================
-
-function showSchedule() {
-
-  alert(
-    "SCHEDULE\n\n" +
-    "Regular Season\n\n" +
-    "Match Week 1\n" +
-    "• Match akan tersedia pada sistem simulasi berikutnya.\n\n" +
-    "Format: BO3"
-  );
-
-}
-
-
-// =======================================
-// STANDINGS
-// =======================================
-
-function showStandings() {
-
-  if (!game.league) return;
-
-
-  const table =
-    Object.values(
-      game.standings
-    )
-    .sort(
-      (a, b) =>
-        b.points - a.points
-    );
-
-
-  let message =
-    `${game.league.name}\n` +
-    `SEASON ${game.year}\n\n`;
-
-
-  table.forEach(
-    (row, index) => {
-
-      const team =
-        game.league.teams.find(
-          t => t.id === row.teamId
-        );
-
-
-      message +=
-        `${index + 1}. ` +
-        `${team.name}\n` +
-        `${row.wins}W - ` +
-        `${row.losses}L | ` +
-        `${row.points} pts\n\n`;
-
-    }
-  );
 
 
   alert(message);
@@ -854,21 +1416,28 @@ function showScouting() {
   game.league.teams.forEach(
     team => {
 
-      if (team.id === game.team.id)
+      if (
+        team.id ===
+        game.team.id
+      ) {
         return;
+      }
 
 
       team.players.forEach(
         player => {
 
           players.push({
+
             ...player,
-            club: team.name
+
+            club:
+              team.name
+
           });
 
         }
       );
-
     }
   );
 
@@ -885,17 +1454,20 @@ function showScouting() {
 
 
   players
-    .slice(0, 10)
+    .slice(0, 15)
     .forEach(
       player => {
 
         message +=
           `${player.name}\n` +
-          `${player.club}\n` +
-          `${player.role}\n` +
-          `OVR ${player.rating} | ` +
-          `POT ${player.potential}\n\n`;
 
+          `${player.club}\n` +
+
+          `${player.role}\n` +
+
+          `OVR ${player.rating} | ` +
+
+          `POT ${player.potential}\n\n`;
       }
     );
 
@@ -905,7 +1477,7 @@ function showScouting() {
 
 
 // =======================================
-// SAVE GAME
+// SAVE
 // =======================================
 
 function saveGame() {
@@ -914,12 +1486,11 @@ function saveGame() {
     "mlbbProManagerSave",
     JSON.stringify(game)
   );
-
 }
 
 
 // =======================================
-// LOAD GAME
+// LOAD
 // =======================================
 
 function loadGame() {
@@ -946,11 +1517,10 @@ function loadGame() {
 
       game.country =
         countries.find(
-          c =>
-            c.id ===
+          country =>
+            country.id ===
             game.country.id
         );
-
     }
 
 
@@ -958,11 +1528,10 @@ function loadGame() {
 
       game.league =
         leagues.find(
-          l =>
-            l.id ===
+          league =>
+            league.id ===
             game.league.id
         );
-
     }
 
 
@@ -973,28 +1542,421 @@ function loadGame() {
 
       game.team =
         game.league.teams.find(
-          t =>
-            t.id ===
+          team =>
+            team.id ===
             game.team.id
         );
 
-      updateDashboard();
+
+      /*
+      Jika save lama belum memiliki
+      starters atau schedule,
+      buat ulang.
+      */
+
+      if (
+        !Array.isArray(
+          game.starters
+        ) ||
+        game.starters.length !== 5
+      ) {
+
+        createStarters();
+      }
+
+
+      if (
+        !Array.isArray(
+          game.schedule
+        ) ||
+        game.schedule.length === 0
+      ) {
+
+        createSeasonSchedule();
+      }
+
+
+      renderDashboard();
 
       showScreen(
         dashboardScreen
       );
-
     }
 
   } catch (error) {
 
     console.error(
-      "Save rusak:",
+      "Save error:",
       error
     );
 
   }
+}
 
+
+// =======================================
+// ADVANCE SEASON
+// =======================================
+
+function advanceSeason() {
+
+  if (!game.careerStarted) {
+
+    alert(
+      "Mulai karier terlebih dahulu."
+    );
+
+    return;
+  }
+
+
+  const unfinished =
+    game.schedule.some(
+      match =>
+        !match.played
+    );
+
+
+  if (unfinished) {
+
+    alert(
+      "Selesaikan semua pertandingan season terlebih dahulu."
+    );
+
+    return;
+  }
+
+
+  const confirmAdvance =
+    confirm(
+      `Akhiri Season ${game.year} ` +
+      `dan lanjut ke ${game.year + 1}?`
+    );
+
+
+  if (!confirmAdvance) return;
+
+
+  developPlayers();
+
+
+  game.year++;
+
+
+  createStandings();
+
+  createStarters();
+
+  createSeasonSchedule();
+
+
+  saveGame();
+
+  renderDashboard();
+
+
+  alert(
+    `Selamat datang di Season ${game.year}!`
+  );
+}
+
+
+// =======================================
+// PLAYER DEVELOPMENT
+// =======================================
+
+function developPlayers() {
+
+  if (!game.league) return;
+
+
+  game.league.teams.forEach(
+    team => {
+
+      team.players.forEach(
+        player => {
+
+          player.age++;
+
+
+          let change = 0;
+
+
+          // Young
+          if (player.age <= 21) {
+
+            const roll =
+              Math.random();
+
+            if (roll < 0.60) {
+
+              change =
+                Math.floor(
+                  Math.random() * 3
+                ) + 1;
+
+            } else if (
+              roll < 0.72
+            ) {
+
+              change = -1;
+            }
+          }
+
+
+          // Prime
+          else if (
+            player.age <= 25
+          ) {
+
+            const roll =
+              Math.random();
+
+            if (roll < 0.45) {
+
+              change = 1;
+
+            } else if (
+              roll < 0.55
+            ) {
+
+              change = -1;
+            }
+          }
+
+
+          // Veteran
+          else {
+
+            const roll =
+              Math.random();
+
+            if (roll < 0.35) {
+
+              change = -1;
+
+            } else if (
+              roll < 0.50
+            ) {
+
+              change = -2;
+            }
+          }
+
+
+          // Potential bonus
+          if (
+            player.potential >= 94 &&
+            change > 0
+          ) {
+
+            change++;
+          }
+
+
+          player.rating +=
+            change;
+
+
+          player.rating =
+            Math.max(
+              50,
+              Math.min(
+                player.potential,
+                player.rating
+              )
+            );
+        }
+      );
+    }
+  );
+}
+
+
+// =======================================
+// MONEY
+// =======================================
+
+function formatMoney(value) {
+
+  if (value >= 1000000) {
+
+    return (
+      "$" +
+      (value / 1000000)
+        .toFixed(1) +
+      "M"
+    );
+  }
+
+
+  if (value >= 1000) {
+
+    return (
+      "$" +
+      Math.round(
+        value / 1000
+      ) +
+      "K"
+    );
+  }
+
+
+  return "$" + value;
+}
+
+
+// =======================================
+// MENU
+// =======================================
+
+function setupMenu() {
+
+  document
+    .querySelectorAll(
+      ".menu-card"
+    )
+    .forEach(button => {
+
+      const title =
+        button.querySelector(
+          "strong"
+        );
+
+      if (!title) return;
+
+
+      const name =
+        title.textContent
+          .trim()
+          .toLowerCase();
+
+
+      if (
+        name === "roster"
+      ) {
+
+        button.onclick =
+          showRoster;
+      }
+
+
+      if (
+        name === "transfer"
+      ) {
+
+        button.onclick =
+          showTransferMarket;
+      }
+
+
+      if (
+        name === "training"
+      ) {
+
+        /*
+        TRAINING DIHAPUS
+        */
+
+        button.style.display =
+          "none";
+      }
+
+
+      if (
+        name === "schedule"
+      ) {
+
+        button.onclick =
+          showSchedule;
+      }
+
+
+      if (
+        name === "standings"
+      ) {
+
+        button.onclick =
+          () => {
+
+            renderStandings();
+
+            const element =
+              document.getElementById(
+                "standingsContainer"
+              );
+
+            if (element) {
+
+              element.scrollIntoView({
+                behavior: "smooth"
+              });
+            }
+          };
+      }
+
+
+      if (
+        name === "scouting"
+      ) {
+
+        button.onclick =
+          showScouting;
+      }
+    });
+}
+
+
+// =======================================
+// SCHEDULE
+// =======================================
+
+function showSchedule() {
+
+  if (!game.schedule.length) {
+
+    alert(
+      "Schedule belum tersedia."
+    );
+
+    return;
+  }
+
+
+  let message =
+    `SCHEDULE ${game.year}\n\n`;
+
+
+  game.schedule.forEach(
+    match => {
+
+      const enemy =
+        getTeamById(
+          match.away
+        );
+
+
+      if (match.played) {
+
+        message +=
+          `Week ${match.week}: ` +
+          `${game.team.short} ` +
+          `${match.result.playerScore}` +
+          `-${match.result.enemyScore} ` +
+          `${enemy.short}\n`;
+
+      } else {
+
+        message +=
+          `Week ${match.week}: ` +
+          `${game.team.short} vs ` +
+          `${enemy.short}\n`;
+      }
+    }
+  );
+
+
+  alert(message);
 }
 
 
@@ -1006,7 +1968,8 @@ function restartGame() {
 
   const confirmRestart =
     confirm(
-      "Mulai career baru?\nSave saat ini akan dihapus."
+      "Mulai career baru?\n" +
+      "Save saat ini akan dihapus."
     );
 
 
@@ -1019,15 +1982,23 @@ function restartGame() {
 
 
   location.reload();
-
 }
 
 
 // =======================================
-// ADVANCE SEASON BUTTON
+// ADVANCE BUTTON
 // =======================================
 
 function createAdvanceButton() {
+
+  const existing =
+    document.getElementById(
+      "advanceSeasonButton"
+    );
+
+
+  if (existing) return;
+
 
   const button =
     document.createElement(
@@ -1035,24 +2006,16 @@ function createAdvanceButton() {
     );
 
 
+  button.id =
+    "advanceSeasonButton";
+
+
   button.className =
     "restart-button";
 
 
-  button.style.marginLeft =
-    "10px";
-
-
-  button.style.color =
-    "#ffb800";
-
-
-  button.style.borderColor =
-    "#5a4918";
-
-
   button.textContent =
-    "→ Akhiri Season";
+    "→ AKHIRI SEASON";
 
 
   button.onclick =
@@ -1065,14 +2028,13 @@ function createAdvanceButton() {
     );
 
 
-  if (restart) {
+  if (restart &&
+      restart.parentNode) {
 
     restart.parentNode.appendChild(
       button
     );
-
   }
-
 }
 
 
@@ -1087,9 +2049,6 @@ setupMenu();
 loadGame();
 
 
-// Hanya buat tombol jika
-// belum ada career saat startup
-
 setTimeout(() => {
 
   createAdvanceButton();
@@ -1098,5 +2057,5 @@ setTimeout(() => {
 
 
 console.log(
-  "MLBB Pro Manager V0.2 loaded."
+  "MLBB Pro Manager V0.3 loaded."
 );
