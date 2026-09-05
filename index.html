@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080b14">
+
+  <title>MLBB Pro Manager</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div>
+        <div class="logo">MLBB</div>
+        <div class="logo-sub">PRO MANAGER</div>
+      </div>
+
+      <div class="version">V0.1</div>
+    </header>
+
+
+    <!-- SCREEN 1 -->
+    <main id="countryScreen" class="screen active">
+
+      <div class="hero">
+        <span class="badge">CAREER MODE</span>
+
+        <h1>
+          BUILD YOUR<br>
+          <span>LEGACY</span>
+        </h1>
+
+        <p>
+          Mulai kariermu sebagai manager tim Mobile Legends
+          dan bawa timmu menuju juara dunia.
+        </p>
+      </div>
+
+
+      <section class="selection-card">
+
+        <div class="step">
+          <span>01</span>
+          <div>
+            <small>LANGKAH PERTAMA</small>
+            <h2>Pilih Negara / Region</h2>
+          </div>
+        </div>
+
+        <div id="countryList" class="option-list"></div>
+
+      </section>
+
+    </main>
+
+
+    <!-- SCREEN 2 -->
+    <main id="leagueScreen" class="screen">
+
+      <button class="back-button" onclick="backToCountry()">
+        ← Kembali
+      </button>
+
+      <div class="page-title">
+        <span class="badge">REGION TERPILIH</span>
+        <h1 id="selectedCountryTitle">Indonesia</h1>
+        <p>Pilih liga tempat kamu ingin memulai karier.</p>
+      </div>
+
+      <section class="selection-card">
+
+        <div class="step">
+          <span>02</span>
+          <div>
+            <small>PILIH KOMPETISI</small>
+            <h2>Liga</h2>
+          </div>
+        </div>
+
+        <div id="leagueList" class="option-list"></div>
+
+      </section>
+
+    </main>
+
+
+    <!-- SCREEN 3 -->
+    <main id="teamScreen" class="screen">
+
+      <button class="back-button" onclick="backToLeague()">
+        ← Kembali
+      </button>
+
+      <div class="page-title">
+        <span class="badge">KOMPETISI</span>
+        <h1 id="selectedLeagueTitle">MPL Indonesia</h1>
+        <p>Pilih tim yang ingin kamu kelola.</p>
+      </div>
+
+      <section class="selection-card">
+
+        <div class="step">
+          <span>03</span>
+          <div>
+            <small>PILIH TIM</small>
+            <h2>Team Selection</h2>
+          </div>
+        </div>
+
+        <div id="teamList" class="team-list"></div>
+
+      </section>
+
+    </main>
+
+
+    <!-- SCREEN 4 -->
+    <main id="dashboardScreen" class="screen">
+
+      <div class="dashboard-header">
+
+        <div>
+          <span class="badge">MANAGER CAREER</span>
+          <h1 id="dashboardTeam">Team</h1>
+          <p id="dashboardLeague">League</p>
+        </div>
+
+        <div class="season">
+          <small>SEASON</small>
+          <strong>2026</strong>
+        </div>
+
+      </div>
+
+
+      <section class="stats-grid">
+
+        <div class="stat-card">
+          <span>💰</span>
+          <small>BUDGET</small>
+          <strong>$500K</strong>
+        </div>
+
+        <div class="stat-card">
+          <span>🏆</span>
+          <small>TROPHIES</small>
+          <strong>0</strong>
+        </div>
+
+        <div class="stat-card">
+          <span>📈</span>
+          <small>REPUTATION</small>
+          <strong>50</strong>
+        </div>
+
+        <div class="stat-card">
+          <span>🎯</span>
+          <small>OBJECTIVE</small>
+          <strong>TOP 4</strong>
+        </div>
+
+      </section>
+
+
+      <section class="menu-section">
+
+        <h2>Manager Menu</h2>
+
+        <div class="menu-grid">
+
+          <button class="menu-card">
+            <span>👥</span>
+            <strong>Roster</strong>
+            <small>Kelola pemain</small>
+          </button>
+
+          <button class="menu-card">
+            <span>🔄</span>
+            <strong>Transfer</strong>
+            <small>Transfer pemain</small>
+          </button>
+
+          <button class="menu-card">
+            <span>🏋️</span>
+            <strong>Training</strong>
+            <small>Latih tim</small>
+          </button>
+
+          <button class="menu-card">
+            <span>📅</span>
+            <strong>Schedule</strong>
+            <small>Jadwal pertandingan</small>
+          </button>
+
+          <button class="menu-card">
+            <span>📊</span>
+            <strong>Standings</strong>
+            <small>Klasemen liga</small>
+          </button>
+
+          <button class="menu-card">
+            <span>🔎</span>
+            <strong>Scouting</strong>
+            <small>Cari pemain</small>
+          </button>
+
+        </div>
+
+      </section>
+
+
+      <button class="restart-button" onclick="restartGame()">
+        ↻ Mulai Karier Baru
+      </button>
+
+    </main>
+
+  </div>
+
+
+  <script src="app.js"></script>
+
+</body>
+</html>
