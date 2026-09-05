@@ -1,7 +1,6 @@
 /* =========================================================
    MLBB PRO MANAGER
    V0.5
-   TRANSFER MARKET
 ========================================================= */
 
 
@@ -48,6 +47,213 @@ let game = {
 
 
 /* =========================================================
+   SAVE
+========================================================= */
+
+function saveGame() {
+
+  try {
+
+    localStorage.setItem(
+      "mlbb_pro_manager_save",
+      JSON.stringify(game)
+    );
+
+  } catch (error) {
+
+    console.log(
+      "Failed to save game:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   LOAD
+========================================================= */
+
+function loadGame() {
+
+  const save =
+    localStorage.getItem(
+      "mlbb_pro_manager_save"
+    );
+
+  if (!save) return;
+
+  try {
+
+    const saved =
+      JSON.parse(save);
+
+    if (!saved.careerStarted) {
+      return;
+    }
+
+
+    /*
+      Re-link country
+    */
+
+    const country =
+      countries.find(
+        c =>
+          c.id ===
+          saved.country?.id
+      );
+
+
+    /*
+      Re-link league
+    */
+
+    const league =
+      leagues.find(
+        l =>
+          l.id ===
+          saved.league?.id
+      );
+
+
+    /*
+      Re-link team
+    */
+
+    const team =
+      league?.teams.find(
+        t =>
+          t.id ===
+          saved.team?.id
+      );
+
+
+    if (
+      !country ||
+      !league ||
+      !team
+    ) {
+
+      console.log(
+        "Save tidak cocok dengan data game."
+      );
+
+      return;
+
+    }
+
+
+    game = {
+
+      year:
+        saved.year ||
+        2026,
+
+      country,
+
+      league,
+
+      team,
+
+      budget:
+        saved.budget ??
+        500000,
+
+      reputation:
+        saved.reputation ??
+        50,
+
+      standings:
+        Array.isArray(
+          saved.standings
+        )
+          ? saved.standings
+          : [],
+
+      schedule:
+        Array.isArray(
+          saved.schedule
+        )
+          ? saved.schedule
+          : [],
+
+      currentMatch:
+        null,
+
+      starters:
+        Array.isArray(
+          saved.starters
+        )
+          ? saved.starters
+          : [],
+
+      careerStarted:
+        true
+
+    };
+
+
+    /*
+      Make sure standings exist
+    */
+
+    if (
+      !game.standings.length
+    ) {
+
+      createStandings();
+
+    }
+
+
+    /*
+      Make sure schedule exists
+    */
+
+    if (
+      !game.schedule.length
+    ) {
+
+      createSeasonSchedule();
+
+    }
+
+
+    /*
+      Make sure Starting 5 exists
+    */
+
+    if (
+      game.starters.length !== 5
+    ) {
+
+      createStarters();
+
+    }
+
+
+    renderDashboard();
+
+    showScreen(
+      "dashboardScreen"
+    );
+
+
+  } catch (error) {
+
+    console.log(
+      "Save corrupt:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
    SCREEN
 ========================================================= */
 
@@ -74,169 +280,27 @@ function showScreen(id) {
       "hidden"
     );
 
+    window.scrollTo({
+      top: 0,
+      behavior: "instant"
+    });
+
   }
 
 }
 
 
 /* =========================================================
-   SAVE
+   BACK
 ========================================================= */
 
-function saveGame() {
+function backToDashboard() {
 
-  localStorage.setItem(
-    "mlbb_pro_manager_save",
-    JSON.stringify(game)
+  showScreen(
+    "dashboardScreen"
   );
 
-}
-
-
-/* =========================================================
-   LOAD
-========================================================= */
-
-function loadGame() {
-
-  const saved =
-    localStorage.getItem(
-      "mlbb_pro_manager_save"
-    );
-
-
-  if (!saved) return;
-
-
-  try {
-
-    const data =
-      JSON.parse(saved);
-
-
-    game = data;
-
-
-    /*
-      Reconnect country.
-    */
-
-    if (game.country) {
-
-      const countryId =
-        game.country.id;
-
-
-      game.country =
-        countries.find(
-          country =>
-            country.id ===
-            countryId
-        ) || null;
-
-    }
-
-
-    /*
-      Reconnect league.
-    */
-
-    if (
-      game.country &&
-      game.league
-    ) {
-
-      const leagueId =
-        game.league.id;
-
-
-      game.league =
-        leagues.find(
-          league =>
-            league.id ===
-            leagueId
-        ) || null;
-
-    }
-
-
-    /*
-      Reconnect team.
-    */
-
-    if (
-      game.league &&
-      game.team
-    ) {
-
-      const teamId =
-        game.team.id;
-
-
-      game.team =
-        game.league.teams.find(
-          team =>
-            team.id ===
-            teamId
-        ) || null;
-
-    }
-
-
-    if (!Array.isArray(
-      game.starters
-    )) {
-
-      game.starters = [];
-
-    }
-
-
-    if (!Array.isArray(
-      game.schedule
-    )) {
-
-      game.schedule = [];
-
-    }
-
-
-    if (!Array.isArray(
-      game.standings
-    )) {
-
-      game.standings = [];
-
-    }
-
-
-    if (
-      game.careerStarted &&
-      game.team
-    ) {
-
-      renderDashboard();
-
-      showScreen(
-        "dashboardScreen"
-      );
-
-    }
-
-
-  } catch (error) {
-
-    console.error(
-      "Load error:",
-      error
-    );
-
-
-    localStorage.removeItem(
-      "mlbb_pro_manager_save"
-    );
-
-  }
+  renderDashboard();
 
 }
 
@@ -251,7 +315,6 @@ function renderCountries() {
     document.getElementById(
       "countryList"
     );
-
 
   if (!container) return;
 
@@ -274,30 +337,41 @@ function renderCountries() {
 
       button.innerHTML = `
 
-        <div>
+        <div class="country-left">
 
-          <strong>
-            ${country.name}
-          </strong>
+          <div class="country-flag">
+            ${country.flag || "🌐"}
+          </div>
 
-          <div class="card-right">
-            ${country.leagues.length}
-            League
+          <div>
+
+            <strong>
+              ${country.name}
+            </strong>
+
+            <span>
+              ${country.leagues.length}
+              League
+            </span>
+
           </div>
 
         </div>
 
-        <div class="country-flag">
-          ${country.flag}
+        <div class="card-arrow">
+          →
         </div>
 
       `;
 
 
-      button.onclick = () =>
+      button.onclick = () => {
+
         selectCountry(
           country.id
         );
+
+      };
 
 
       container.appendChild(
@@ -332,13 +406,7 @@ function selectCountry(
     country;
 
 
-  game.league = null;
-
-  game.team = null;
-
-
   renderLeagues();
-
 
   showScreen(
     "leagueScreen"
@@ -358,51 +426,47 @@ function renderLeagues() {
       "leagueList"
     );
 
-
   if (!container) return;
 
 
   container.innerHTML = "";
 
 
-  if (!game.country)
-    return;
+  if (!game.country) return;
 
+
+  /*
+    FIX V0.5:
+    Country ID sekarang dicocokkan
+    dengan league.region.
+  */
 
   const available =
     leagues.filter(
       league =>
-        league.region ===
+        league.region &&
+        league.region.toLowerCase() ===
         game.country.id
-          .toUpperCase()
     );
 
 
-  if (!available.length) {
+  /*
+    Fallback menggunakan daftar
+    league ID milik country.
+  */
 
-    container.innerHTML = `
-
-      <div class="game-card">
-
-        <h3>
-          No League Available
-        </h3>
-
-        <p>
-          Belum ada liga untuk negara ini.
-        </p>
-
-      </div>
-
-    `;
+  const finalLeagues =
+    available.length
+      ? available
+      : leagues.filter(
+          league =>
+            game.country.leagues.includes(
+              league.id
+            )
+        );
 
 
-    return;
-
-  }
-
-
-  available.forEach(
+  finalLeagues.forEach(
     league => {
 
       const button =
@@ -423,24 +487,29 @@ function renderLeagues() {
             ${league.name}
           </strong>
 
-          <div class="card-right">
+          <span>
             Season ${league.season}
-          </div>
+            •
+            ${league.teams.length}
+            Teams
+          </span>
 
         </div>
 
-        <span class="card-right">
-          ${league.teams.length}
-          Teams →
-        </span>
+        <div class="card-arrow">
+          →
+        </div>
 
       `;
 
 
-      button.onclick = () =>
+      button.onclick = () => {
+
         selectLeague(
           league
         );
+
+      };
 
 
       container.appendChild(
@@ -449,6 +518,28 @@ function renderLeagues() {
 
     }
   );
+
+
+  if (!finalLeagues.length) {
+
+    container.innerHTML = `
+
+      <div class="game-card">
+
+        <h3>
+          No League Found
+        </h3>
+
+        <p>
+          Belum ada data league untuk
+          negara ini.
+        </p>
+
+      </div>
+
+    `;
+
+  }
 
 }
 
@@ -461,18 +552,11 @@ function selectLeague(
   league
 ) {
 
-  if (!league) return;
-
-
   game.league =
     league;
 
 
-  game.team = null;
-
-
   renderTeams();
-
 
   showScreen(
     "teamScreen"
@@ -492,15 +576,13 @@ function renderTeams() {
       "teamList"
     );
 
-
   if (!container) return;
 
 
   container.innerHTML = "";
 
 
-  if (!game.league)
-    return;
+  if (!game.league) return;
 
 
   game.league.teams.forEach(
@@ -524,24 +606,27 @@ function renderTeams() {
             ${team.name}
           </strong>
 
-          <div class="card-right">
+          <span>
             ${team.players.length}
             Players
-          </div>
+          </span>
 
         </div>
 
-        <span class="card-right">
-          Select →
-        </span>
+        <div class="card-arrow">
+          →
+        </div>
 
       `;
 
 
-      button.onclick = () =>
+      button.onclick = () => {
+
         selectTeam(
           team
         );
+
+      };
 
 
       container.appendChild(
@@ -562,24 +647,21 @@ function selectTeam(
   team
 ) {
 
-  if (!team) return;
-
-
   game.team =
     team;
-
 
   game.careerStarted =
     true;
 
+  game.year =
+    game.league.season ||
+    2026;
 
   game.budget =
     500000;
 
-
   game.reputation =
     50;
-
 
   createStarters();
 
@@ -587,16 +669,9 @@ function selectTeam(
 
   createSeasonSchedule();
 
-
-  game.currentMatch =
-    null;
-
-
   saveGame();
 
-
   renderDashboard();
-
 
   showScreen(
     "dashboardScreen"
@@ -611,36 +686,95 @@ function selectTeam(
 
 function createStarters() {
 
-  if (!game.team)
-    return;
+  if (!game.team) return;
 
 
   const players =
     [...game.team.players];
 
 
-  players.sort(
-    (a, b) =>
-      (b.rating || 0) -
-      (a.rating || 0)
-  );
+  /*
+    Try to pick one player
+    from each unique role first.
+  */
+
+  const selected = [];
+
+  const roles = [];
+
+
+  players
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.rating || 0) -
+        (a.rating || 0)
+    )
+    .forEach(player => {
+
+      if (
+        !roles.includes(
+          player.role
+        ) &&
+        selected.length < 5
+      ) {
+
+        selected.push(
+          player.id
+        );
+
+        roles.push(
+          player.role
+        );
+
+      }
+
+    });
+
+
+  /*
+    Fill remaining slots
+    with highest rating.
+  */
+
+  players
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.rating || 0) -
+        (a.rating || 0)
+    )
+    .forEach(player => {
+
+      if (
+        selected.length < 5 &&
+        !selected.includes(
+          player.id
+        )
+      ) {
+
+        selected.push(
+          player.id
+        );
+
+      }
+
+    });
 
 
   game.starters =
-    players
-      .slice(0, 5)
-      .map(
-        player =>
-          player.id
-      );
+    selected.slice(0, 5);
 
 }
 
 
+/* =========================================================
+   GET STARTERS
+========================================================= */
+
 function getStarters() {
 
-  if (!game.team)
-    return [];
+  if (!game.team) return [];
 
 
   return game.team.players.filter(
@@ -652,6 +786,10 @@ function getStarters() {
 
 }
 
+
+/* =========================================================
+   TOGGLE STARTER
+========================================================= */
 
 function toggleStarter(
   playerId
@@ -683,7 +821,6 @@ function toggleStarter(
 
     }
 
-
     game.starters.push(
       playerId
     );
@@ -709,28 +846,17 @@ function calculateTeamRating(
   if (!team) return 0;
 
 
-  let players;
-
-
-  if (
+  const players =
     team === game.team
-  ) {
-
-    players =
-      getStarters();
-
-  } else {
-
-    players =
-      [...team.players]
-        .sort(
-          (a, b) =>
-            (b.rating || 0) -
-            (a.rating || 0)
-        )
-        .slice(0, 5);
-
-  }
+      ? getStarters()
+      : team.players
+          .slice()
+          .sort(
+            (a, b) =>
+              (b.rating || 0) -
+              (a.rating || 0)
+          )
+          .slice(0, 5);
 
 
   if (!players.length)
@@ -756,7 +882,7 @@ function calculateTeamRating(
     );
 
 
-  let bonus;
+  let bonus = 0;
 
 
   if (
@@ -832,8 +958,7 @@ function createSeasonSchedule() {
   if (
     !game.league ||
     !game.team
-  )
-    return;
+  ) return;
 
 
   game.schedule = [];
@@ -845,8 +970,7 @@ function createSeasonSchedule() {
       if (
         team.id ===
         game.team.id
-      )
-        return;
+      ) return;
 
 
       game.schedule.push({
@@ -874,6 +998,10 @@ function createSeasonSchedule() {
 }
 
 
+/* =========================================================
+   GET TEAM
+========================================================= */
+
 function getTeamById(
   id
 ) {
@@ -889,6 +1017,10 @@ function getTeamById(
 
 }
 
+
+/* =========================================================
+   NEXT MATCH
+========================================================= */
 
 function getNextMatch() {
 
@@ -906,7 +1038,9 @@ function getNextMatch() {
 
 function openNextMatch() {
 
-  if (!game.careerStarted) {
+  if (
+    !game.careerStarted
+  ) {
 
     alert(
       "Mulai career terlebih dahulu."
@@ -937,7 +1071,6 @@ function openNextMatch() {
 
 
   renderMatchScreen();
-
 
   showScreen(
     "matchScreen"
@@ -1030,13 +1163,13 @@ function renderMatchScreen() {
     "hidden";
 
 
-  result.innerHTML =
-    "";
+  const playButton =
+    document.getElementById(
+      "playMatchButton"
+    );
 
 
-  document.getElementById(
-    "playMatchButton"
-  ).disabled =
+  playButton.disabled =
     false;
 
 }
@@ -1054,13 +1187,18 @@ function renderMatchStarters() {
     );
 
 
-  if (!container) return;
+  if (!container)
+    return;
 
 
   container.innerHTML = "";
 
 
-  getStarters().forEach(
+  const players =
+    getStarters();
+
+
+  players.forEach(
     player => {
 
       const div =
@@ -1087,7 +1225,7 @@ function renderMatchStarters() {
 
         </div>
 
-        <strong>
+        <strong class="player-rating">
           ${player.rating}
         </strong>
 
@@ -1100,6 +1238,27 @@ function renderMatchStarters() {
 
     }
   );
+
+
+  if (
+    players.length !== 5
+  ) {
+
+    container.innerHTML += `
+
+      <div class="game-card">
+
+        <p>
+          Starting 5 belum lengkap.
+          Kembali ke dashboard untuk
+          memilih pemain.
+        </p>
+
+      </div>
+
+    `;
+
+  }
 
 }
 
@@ -1114,8 +1273,7 @@ function simulateCurrentMatch() {
     game.currentMatch;
 
 
-  if (!match)
-    return;
+  if (!match) return;
 
 
   if (
@@ -1131,18 +1289,13 @@ function simulateCurrentMatch() {
   }
 
 
-  if (match.played)
-    return;
-
-
   const opponent =
     getTeamById(
       match.opponentId
     );
 
 
-  if (!opponent)
-    return;
+  if (!opponent) return;
 
 
   const myRating =
@@ -1165,13 +1318,11 @@ function simulateCurrentMatch() {
 
 
   const roll =
-    Math.random() *
-    100;
+    Math.random() * 100;
 
 
   const won =
-    roll <
-    probability;
+    roll < probability;
 
 
   let myGames;
@@ -1243,8 +1394,9 @@ function simulateCurrentMatch() {
 
   if (won) {
 
-    game.reputation +=
-      2;
+    game.reputation += 2;
+
+    game.budget += 15000;
 
   } else {
 
@@ -1312,15 +1464,13 @@ function showMatchResult(
     </p>
 
     <div class="result-score">
-      ${myGames}
-      -
-      ${enemyGames}
+      ${myGames} - ${enemyGames}
     </div>
 
     <p>
       ${
         won
-          ? "Kamu mendapatkan 3 poin!"
+          ? "Kamu mendapatkan 3 poin dan bonus Rp 15.000."
           : "Belum berhasil mendapatkan poin."
       }
     </p>
@@ -1337,8 +1487,7 @@ function showMatchResult(
 
   document.getElementById(
     "playMatchButton"
-  ).disabled =
-    true;
+  ).disabled = true;
 
 }
 
@@ -1407,6 +1556,10 @@ function createStandings() {
 }
 
 
+/* =========================================================
+   UPDATE STANDINGS
+========================================================= */
+
 function updateStandings(
   myTeamId,
   opponentId,
@@ -1417,22 +1570,24 @@ function updateStandings(
 
   const mine =
     game.standings.find(
-      standing =>
-        standing.teamId ===
+      s =>
+        s.teamId ===
         myTeamId
     );
 
 
   const enemy =
     game.standings.find(
-      standing =>
-        standing.teamId ===
+      s =>
+        s.teamId ===
         opponentId
     );
 
 
-  if (!mine || !enemy)
-    return;
+  if (
+    !mine ||
+    !enemy
+  ) return;
 
 
   mine.played++;
@@ -1443,12 +1598,14 @@ function updateStandings(
   mine.gameWins +=
     myGames;
 
+
   mine.gameLosses +=
     opponentGames;
 
 
   enemy.gameWins +=
     opponentGames;
+
 
   enemy.gameLosses +=
     myGames;
@@ -1496,6 +1653,10 @@ function renderDashboard() {
 }
 
 
+/* =========================================================
+   UPDATE DASHBOARD
+========================================================= */
+
 function updateDashboard() {
 
   const name =
@@ -1508,6 +1669,21 @@ function updateDashboard() {
 
     name.textContent =
       game.team.name;
+
+  }
+
+
+  const leagueName =
+    document.getElementById(
+      "leagueName"
+    );
+
+
+  if (leagueName) {
+
+    leagueName.textContent =
+      game.league?.name ||
+      "MPL";
 
   }
 
@@ -1597,7 +1773,6 @@ function renderNextMatch() {
 
     `;
 
-
     return;
 
   }
@@ -1613,26 +1788,36 @@ function renderNextMatch() {
     return;
 
 
+  const playedCount =
+    game.schedule.filter(
+      m =>
+        m.played
+    ).length;
+
+
+  const total =
+    game.schedule.length;
+
+
   container.innerHTML = `
 
     <div class="game-card">
 
       <h3>
         ${game.team.name}
-        <br>
-        VS
-        <br>
+        vs
         ${opponent.name}
       </h3>
 
       <p>
-        BO3 • Regular Season
+        BO3 • Match
+        ${playedCount + 1}
+        / ${total}
       </p>
 
       <button
         class="primary-button"
         onclick="openNextMatch()"
-        style="margin-top:15px;"
       >
         OPEN MATCH
       </button>
@@ -1656,14 +1841,15 @@ function renderRoster() {
     );
 
 
-  if (
-    !container ||
-    !game.team
-  )
+  if (!container)
     return;
 
 
   container.innerHTML = "";
+
+
+  if (!game.team)
+    return;
 
 
   game.team.players.forEach(
@@ -1694,28 +1880,24 @@ function renderRoster() {
           </strong>
 
           <div class="match-player-role">
-
             ${player.role}
-
-            • Age
-            ${player.age}
-
+            • Age ${player.age}
           </div>
 
         </div>
 
+        <div class="player-right">
 
-        <div
-          style="text-align:right;"
-        >
-
-          <strong>
+          <strong class="player-rating">
             ${player.rating}
           </strong>
 
-          <br>
-
           <button
+            class="starter-button ${
+              selected
+                ? "active"
+                : ""
+            }"
             onclick="toggleStarter('${player.id}')"
           >
             ${
@@ -1741,29 +1923,6 @@ function renderRoster() {
 
 
 /* =========================================================
-   SCROLL ROSTER
-========================================================= */
-
-function scrollToRoster() {
-
-  const roster =
-    document.getElementById(
-      "rosterContainer"
-    );
-
-
-  if (roster) {
-
-    roster.scrollIntoView({
-      behavior: "smooth"
-    });
-
-  }
-
-}
-
-
-/* =========================================================
    STANDINGS UI
 ========================================================= */
 
@@ -1779,32 +1938,42 @@ function renderStandings() {
     return;
 
 
+  if (
+    !game.standings.length
+  ) {
+
+    container.innerHTML = "";
+
+    return;
+
+  }
+
+
   const sorted =
     [...game.standings]
       .sort(
         (a, b) => {
 
-          const aDiff =
+          const gdA =
             a.gameWins -
             a.gameLosses;
 
-
-          const bDiff =
+          const gdB =
             b.gameWins -
             b.gameLosses;
 
 
           return (
-
             b.points -
-            a.points ||
-
+            a.points
+          ) ||
+          (
             b.wins -
-            a.wins ||
-
-            bDiff -
-            aDiff
-
+            a.wins
+          ) ||
+          (
+            gdB -
+            gdA
           );
 
         }
@@ -1834,43 +2003,42 @@ function renderStandings() {
 
 
       div.className =
-        "match-player";
+        "standing-row";
+
+
+      const gd =
+        standing.gameWins -
+        standing.gameLosses;
 
 
       div.innerHTML = `
 
-        <div>
+        <div class="standing-rank">
+          #${index + 1}
+        </div>
+
+        <div class="standing-team">
 
           <strong>
-
-            #${index + 1}
-
-            ${
-              team.short ||
-              team.name
-            }
-
+            ${team.name}
           </strong>
 
-          <div class="match-player-role">
-
+          <div class="standing-record">
             ${standing.wins}W -
             ${standing.losses}L
-
-            •
-
-            ${standing.gameWins}-
-            ${standing.gameLosses}
-
           </div>
 
         </div>
 
+        <div class="standing-gd">
+          ${gd >= 0 ? "+" : ""}
+          ${gd}
+        </div>
 
-        <strong>
+        <div class="standing-points">
           ${standing.points}
           PTS
-        </strong>
+        </div>
 
       `;
 
@@ -1891,7 +2059,9 @@ function renderStandings() {
 
 function showSchedule() {
 
-  if (!game.schedule.length) {
+  if (
+    !game.schedule.length
+  ) {
 
     alert(
       "Schedule belum tersedia."
@@ -1920,11 +2090,8 @@ function showSchedule() {
 
 
       text +=
-
         `${index + 1}. ` +
-
         `${opponent.name} - ` +
-
         `${
           match.played
             ? match.result +
@@ -1947,106 +2114,30 @@ function showSchedule() {
 
 function showTransferMarket() {
 
-  if (!game.team) {
-
-    alert(
-      "Kamu belum memilih team."
-    );
-
-    return;
-
-  }
+  if (
+    !game.league ||
+    !game.team
+  ) return;
 
 
-  updateMarketInfo();
-
-  renderTransferMarket();
-
-  showScreen(
-    "transferScreen"
-  );
-
-}
-
-
-/* =========================================================
-   MARKET INFO
-========================================================= */
-
-function updateMarketInfo() {
-
-  const budget =
-    document.getElementById(
-      "marketBudget"
-    );
-
-
-  if (budget) {
-
-    budget.textContent =
-      formatMoney(
-        game.budget
-      );
-
-  }
-
-
-  const roster =
-    document.getElementById(
-      "marketRosterCount"
-    );
-
-
-  if (roster) {
-
-    roster.textContent =
-      game.team.players.length;
-
-  }
-
-}
-
-
-/* =========================================================
-   GET ALL MARKET PLAYERS
-========================================================= */
-
-function getMarketPlayers() {
-
-  if (!game.league)
-    return [];
-
-
-  const players = [];
+  const candidates = [];
 
 
   game.league.teams.forEach(
     team => {
 
-      /*
-        Pemain dari tim sendiri
-        tidak muncul sebagai pemain
-        yang bisa dibeli.
-      */
-
       if (
         team.id ===
         game.team.id
-      )
-        return;
+      ) return;
 
 
       team.players.forEach(
         player => {
 
-          players.push({
-
-            player:
-              player,
-
-            team:
-              team
-
+          candidates.push({
+            player,
+            team
           });
 
         }
@@ -2056,7 +2147,46 @@ function getMarketPlayers() {
   );
 
 
-  return players;
+  candidates.sort(
+    (a, b) =>
+      (b.player.rating || 0) -
+      (a.player.rating || 0)
+  );
+
+
+  const top =
+    candidates.slice(0, 5);
+
+
+  let message =
+    "TRANSFER MARKET V0.5\n\n";
+
+
+  top.forEach(
+    item => {
+
+      const price =
+        calculateTransferPrice(
+          item.player
+        );
+
+
+      message +=
+        `${item.player.name}\n` +
+        `${item.player.role} • ` +
+        `Rating ${item.player.rating}\n` +
+        `Club: ${item.team.name}\n` +
+        `Price: ${formatMoney(price)}\n\n`;
+
+    }
+  );
+
+
+  message +=
+    "Transfer penuh akan dikembangkan di V0.6.";
+
+
+  alert(message);
 
 }
 
@@ -2070,1074 +2200,39 @@ function calculateTransferPrice(
 ) {
 
   const rating =
-    player.rating ||
-    50;
-
-
-  const potential =
-    player.potential ||
-    rating;
+    player.rating || 60;
 
 
   const age =
-    player.age ||
-    20;
+    player.age || 20;
 
-
-  /*
-    Base price.
-  */
 
   let price =
-    25000;
+    rating * 3000;
 
-
-  /*
-    Rating.
-  */
-
-  price +=
-    rating *
-    3500;
-
-
-  /*
-    Potential.
-  */
-
-  price +=
-    Math.max(
-      0,
-      potential -
-      rating
-    ) *
-    3000;
-
-
-  /*
-    Young player premium.
-  */
 
   if (age <= 21) {
 
-    price *=
-      1.15;
+    price *= 1.4;
 
-  }
+  } else if (
+    age <= 24
+  ) {
 
+    price *= 1.2;
 
-  /*
-    Veteran discount.
-  */
+  } else if (
+    age >= 28
+  ) {
 
-  if (age >= 28) {
-
-    price *=
-      0.80;
-
-  }
-
-
-  /*
-    High rating premium.
-  */
-
-  if (rating >= 90) {
-
-    price *=
-      1.25;
+    price *= 0.8;
 
   }
 
 
   return Math.round(
-    price /
-    1000
-  ) * 1000;
-
-}
-
-
-/* =========================================================
-   MARKET RENDER
-========================================================= */
-
-function renderTransferMarket() {
-
-  const container =
-    document.getElementById(
-      "transferList"
-    );
-
-
-  if (!container)
-    return;
-
-
-  const searchInput =
-    document.getElementById(
-      "playerSearch"
-    );
-
-
-  const roleInput =
-    document.getElementById(
-      "roleFilter"
-    );
-
-
-  const search =
-    searchInput
-      ? searchInput.value
-          .toLowerCase()
-          .trim()
-      : "";
-
-
-  const role =
-    roleInput
-      ? roleInput.value
-      : "ALL";
-
-
-  let players =
-    getMarketPlayers();
-
-
-  /*
-    Search.
-  */
-
-  if (search) {
-
-    players =
-      players.filter(
-        item =>
-          item.player.name
-            .toLowerCase()
-            .includes(search)
-      );
-
-  }
-
-
-  /*
-    Role filter.
-  */
-
-  if (role !== "ALL") {
-
-    players =
-      players.filter(
-        item =>
-          String(
-            item.player.role
-          ).toUpperCase() ===
-          role
-      );
-
-  }
-
-
-  /*
-    Sort rating tertinggi.
-  */
-
-  players.sort(
-    (a, b) =>
-      (b.player.rating || 0) -
-      (a.player.rating || 0)
-  );
-
-
-  container.innerHTML = "";
-
-
-  if (!players.length) {
-
-    container.innerHTML = `
-
-      <div class="empty-market">
-
-        Tidak ada pemain
-        yang cocok.
-
-      </div>
-
-    `;
-
-
-    return;
-
-  }
-
-
-  players.forEach(
-    item => {
-
-      const player =
-        item.player;
-
-
-      const team =
-        item.team;
-
-
-      const price =
-        calculateTransferPrice(
-          player
-        );
-
-
-      const affordable =
-        game.budget >=
-        price;
-
-
-      const div =
-        document.createElement(
-          "div"
-        );
-
-
-      div.className =
-        "transfer-card";
-
-
-      div.innerHTML = `
-
-        <div class="transfer-top">
-
-          <div>
-
-            <div class="transfer-player-name">
-              ${player.name}
-            </div>
-
-            <div class="transfer-role">
-              ${player.role}
-            </div>
-
-            <div class="transfer-team">
-              ${team.name}
-            </div>
-
-          </div>
-
-
-          <div class="transfer-rating">
-
-            <strong>
-              ${player.rating}
-            </strong>
-
-            <span>
-              RATING
-            </span>
-
-          </div>
-
-        </div>
-
-
-        <div class="transfer-bottom">
-
-          <div class="transfer-price">
-
-            ${formatMoney(price)}
-
-          </div>
-
-
-          <div class="transfer-actions">
-
-            <button
-              class="market-button"
-              onclick="showPlayerDetail(
-                '${player.id}',
-                '${team.id}'
-              )"
-            >
-              DETAILS
-            </button>
-
-
-            <button
-              class="market-button buy"
-              ${
-                affordable
-                  ? ""
-                  : "disabled"
-              }
-              onclick="buyPlayer(
-                '${player.id}',
-                '${team.id}'
-              )"
-            >
-              ${
-                affordable
-                  ? "BUY"
-                  : "NO BUDGET"
-              }
-            </button>
-
-          </div>
-
-        </div>
-
-      `;
-
-
-      container.appendChild(
-        div
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   FIND MARKET PLAYER
-========================================================= */
-
-function findMarketPlayer(
-  playerId,
-  teamId
-) {
-
-  if (!game.league)
-    return null;
-
-
-  const team =
-    game.league.teams.find(
-      t =>
-        t.id === teamId
-    );
-
-
-  if (!team)
-    return null;
-
-
-  const player =
-    team.players.find(
-      p =>
-        p.id === playerId
-    );
-
-
-  if (!player)
-    return null;
-
-
-  return {
-
-    player:
-      player,
-
-    team:
-      team
-
-  };
-
-}
-
-
-/* =========================================================
-   PLAYER DETAIL
-========================================================= */
-
-function showPlayerDetail(
-  playerId,
-  teamId
-) {
-
-  const item =
-    findMarketPlayer(
-      playerId,
-      teamId
-    );
-
-
-  if (!item)
-    return;
-
-
-  const player =
-    item.player;
-
-
-  const team =
-    item.team;
-
-
-  const price =
-    calculateTransferPrice(
-      player
-    );
-
-
-  const modal =
-    document.getElementById(
-      "playerModal"
-    );
-
-
-  const content =
-    document.getElementById(
-      "playerModalContent"
-    );
-
-
-  content.innerHTML = `
-
-    <div class="player-detail">
-
-      <div class="small-label">
-        PLAYER PROFILE
-      </div>
-
-
-      <h2>
-        ${player.name}
-      </h2>
-
-
-      <div class="player-detail-role">
-        ${player.role}
-      </div>
-
-
-      <div class="player-detail-team">
-        ${team.name}
-      </div>
-
-
-      <div class="detail-grid">
-
-        <div class="detail-box">
-
-          <span>
-            RATING
-          </span>
-
-          <strong>
-            ${player.rating}
-          </strong>
-
-        </div>
-
-
-        <div class="detail-box">
-
-          <span>
-            POTENTIAL
-          </span>
-
-          <strong>
-            ${player.potential}
-          </strong>
-
-        </div>
-
-
-        <div class="detail-box">
-
-          <span>
-            AGE
-          </span>
-
-          <strong>
-            ${player.age}
-          </strong>
-
-        </div>
-
-
-        <div class="detail-box">
-
-          <span>
-            SALARY
-          </span>
-
-          <strong>
-            ${formatMoney(
-              player.salary || 0
-            )}
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <div class="detail-price">
-
-        <span>
-          TRANSFER FEE
-        </span>
-
-        <strong>
-          ${formatMoney(price)}
-        </strong>
-
-      </div>
-
-
-      <button
-        class="primary-button"
-        onclick="buyPlayer(
-          '${player.id}',
-          '${team.id}'
-        ); closePlayerModal();"
-        ${
-          game.budget >= price
-            ? ""
-            : "disabled"
-        }
-      >
-        ${
-          game.budget >= price
-            ? "BUY PLAYER"
-            : "BUDGET TIDAK CUKUP"
-        }
-      </button>
-
-    </div>
-
-  `;
-
-
-  modal.classList.remove(
-    "hidden"
-  );
-
-}
-
-
-/* =========================================================
-   CLOSE MODAL
-========================================================= */
-
-function closePlayerModal() {
-
-  const modal =
-    document.getElementById(
-      "playerModal"
-    );
-
-
-  modal.classList.add(
-    "hidden"
-  );
-
-}
-
-
-/* =========================================================
-   BUY PLAYER
-========================================================= */
-
-function buyPlayer(
-  playerId,
-  teamId
-) {
-
-  const item =
-    findMarketPlayer(
-      playerId,
-      teamId
-    );
-
-
-  if (!item) {
-
-    alert(
-      "Pemain tidak ditemukan."
-    );
-
-    return;
-
-  }
-
-
-  const player =
-    item.player;
-
-
-  const sourceTeam =
-    item.team;
-
-
-  const price =
-    calculateTransferPrice(
-      player
-    );
-
-
-  if (
-    sourceTeam.id ===
-    game.team.id
-  ) {
-
-    alert(
-      "Pemain ini sudah berada di tim kamu."
-    );
-
-    return;
-
-  }
-
-
-  if (
-    game.budget <
-    price
-  ) {
-
-    alert(
-      "Budget kamu tidak cukup."
-    );
-
-    return;
-
-  }
-
-
-  const confirmed =
-    confirm(
-
-      `Rekrut ${player.name} ` +
-
-      `dari ${sourceTeam.name} ` +
-
-      `seharga ${formatMoney(price)}?`
-
-    );
-
-
-  if (!confirmed)
-    return;
-
-
-  /*
-    Hapus pemain dari tim asal.
-  */
-
-  const playerIndex =
-    sourceTeam.players.findIndex(
-      p =>
-        p.id === playerId
-    );
-
-
-  if (
-    playerIndex === -1
-  )
-    return;
-
-
-  sourceTeam.players.splice(
-    playerIndex,
-    1
-  );
-
-
-  /*
-    Masukkan ke tim kita.
-  */
-
-  game.team.players.push(
-    player
-  );
-
-
-  /*
-    Kurangi budget.
-  */
-
-  game.budget -=
-    price;
-
-
-  /*
-    Jika roster baru masuk,
-    jadikan SUB terlebih dahulu.
-  */
-
-  if (
-    game.starters.length < 5
-  ) {
-
-    /*
-      Tidak otomatis menjadi starter.
-      User tetap memilih sendiri.
-    */
-
-  }
-
-
-  /*
-    Recreate standings/schedule
-    supaya struktur liga tetap aman.
-  */
-
-  ensureStandingsIntegrity();
-
-  ensureScheduleIntegrity();
-
-
-  saveGame();
-
-
-  updateDashboard();
-
-  updateMarketInfo();
-
-  renderRoster();
-
-  renderStandings();
-
-  renderTransferMarket();
-
-
-  alert(
-    `${player.name} berhasil direkrut!`
-  );
-
-}
-
-
-/* =========================================================
-   SELL PLAYER
-========================================================= */
-
-function sellPlayer(
-  playerId
-) {
-
-  if (!game.team)
-    return;
-
-
-  const playerIndex =
-    game.team.players.findIndex(
-      player =>
-        player.id ===
-        playerId
-    );
-
-
-  if (
-    playerIndex === -1
-  ) {
-
-    alert(
-      "Pemain tidak ditemukan."
-    );
-
-    return;
-
-  }
-
-
-  const player =
-    game.team.players[
-      playerIndex
-    ];
-
-
-  /*
-    Jangan menjual jika
-    roster terlalu kecil.
-  */
-
-  if (
-    game.team.players.length <= 5
-  ) {
-
-    alert(
-      "Minimal harus ada 5 pemain di roster."
-    );
-
-    return;
-
-  }
-
-
-  const value =
-    Math.round(
-      calculateTransferPrice(
-        player
-      ) * 0.60
-    );
-
-
-  const confirmed =
-    confirm(
-
-      `Jual ${player.name} ` +
-
-      `seharga ${formatMoney(value)}?`
-
-    );
-
-
-  if (!confirmed)
-    return;
-
-
-  game.team.players.splice(
-    playerIndex,
-    1
-  );
-
-
-  /*
-    Hapus dari starter.
-  */
-
-  game.starters =
-    game.starters.filter(
-      id =>
-        id !== playerId
-    );
-
-
-  /*
-    Tambahkan budget.
-  */
-
-  game.budget +=
-    value;
-
-
-  saveGame();
-
-
-  renderDashboard();
-
-
-  alert(
-    `${player.name} terjual seharga ${formatMoney(value)}.`
-  );
-
-}
-
-
-/* =========================================================
-   ENSURE STANDINGS
-========================================================= */
-
-function ensureStandingsIntegrity() {
-
-  if (!game.league)
-    return;
-
-
-  const validIds =
-    game.league.teams.map(
-      team =>
-        team.id
-    );
-
-
-  game.standings =
-    game.standings.filter(
-      standing =>
-        validIds.includes(
-          standing.teamId
-        )
-    );
-
-
-  game.league.teams.forEach(
-    team => {
-
-      const exists =
-        game.standings.some(
-          standing =>
-            standing.teamId ===
-            team.id
-        );
-
-
-      if (!exists) {
-
-        game.standings.push({
-
-          teamId:
-            team.id,
-
-          played:
-            0,
-
-          wins:
-            0,
-
-          losses:
-            0,
-
-          gameWins:
-            0,
-
-          gameLosses:
-            0,
-
-          points:
-            0
-
-        });
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   ENSURE SCHEDULE
-========================================================= */
-
-function ensureScheduleIntegrity() {
-
-  if (
-    !game.league ||
-    !game.team
-  )
-    return;
-
-
-  const existing =
-    new Map();
-
-
-  game.schedule.forEach(
-    match => {
-
-      existing.set(
-        match.opponentId,
-        match
-      );
-
-    }
-  );
-
-
-  const newSchedule = [];
-
-
-  game.league.teams.forEach(
-    team => {
-
-      if (
-        team.id ===
-        game.team.id
-      )
-        return;
-
-
-      if (
-        existing.has(
-          team.id
-        )
-      ) {
-
-        newSchedule.push(
-          existing.get(
-            team.id
-          )
-        );
-
-      } else {
-
-        newSchedule.push({
-
-          opponentId:
-            team.id,
-
-          played:
-            false,
-
-          result:
-            null,
-
-          myGames:
-            0,
-
-          opponentGames:
-            0
-
-        });
-
-      }
-
-    }
-  );
-
-
-  game.schedule =
-    newSchedule;
-
-}
-
-
-/* =========================================================
-   SCHEDULE
-========================================================= */
-
-function showSchedule() {
-
-  if (!game.schedule.length) {
-
-    alert(
-      "Schedule belum tersedia."
-    );
-
-    return;
-
-  }
-
-
-  let text =
-    `SEASON ${game.year}\n\n`;
-
-
-  game.schedule.forEach(
-    (match, index) => {
-
-      const opponent =
-        getTeamById(
-          match.opponentId
-        );
-
-
-      if (!opponent)
-        return;
-
-
-      text +=
-
-        `${index + 1}. ` +
-
-        `${opponent.name} - ` +
-
-        `${
-          match.played
-            ? match.result +
-              ` ${match.myGames}-${match.opponentGames}`
-            : "UPCOMING"
-        }\n`;
-
-    }
-  );
-
-
-  alert(text);
+    price / 5000
+  ) * 5000;
 
 }
 
@@ -3148,9 +2243,93 @@ function showSchedule() {
 
 function showScouting() {
 
-  alert(
-    "Scouting System akan hadir di V0.6."
+  if (
+    !game.league
+  ) return;
+
+
+  const candidates = [];
+
+
+  game.league.teams.forEach(
+    team => {
+
+      team.players.forEach(
+        player => {
+
+          if (
+            team.id !==
+            game.team.id
+          ) {
+
+            candidates.push({
+              player,
+              team
+            });
+
+          }
+
+        }
+      );
+
+    }
   );
+
+
+  candidates.sort(
+    (a, b) => {
+
+      const potentialA =
+        a.player.potential ||
+        a.player.rating ||
+        0;
+
+      const potentialB =
+        b.player.potential ||
+        b.player.rating ||
+        0;
+
+      return (
+        potentialB -
+        potentialA
+      );
+
+    }
+  );
+
+
+  const top =
+    candidates.slice(0, 5);
+
+
+  let message =
+    "SCOUTING REPORT V0.5\n\n";
+
+
+  top.forEach(
+    item => {
+
+      const potential =
+        item.player.potential ||
+        "?";
+
+
+      message +=
+        `${item.player.name}\n` +
+        `${item.player.role}\n` +
+        `Rating: ${item.player.rating}\n` +
+        `Potential: ${potential}\n` +
+        `Club: ${item.team.name}\n\n`;
+
+    }
+  );
+
+
+  message +=
+    "Scouting lengkap akan dikembangkan di V0.6.";
+
+
+  alert(message);
 
 }
 
@@ -3161,10 +2340,12 @@ function showScouting() {
 
 function advanceSeason() {
 
-  if (!game.schedule.length) {
+  if (
+    !game.schedule.length
+  ) {
 
     alert(
-      "Season belum dimulai."
+      "Schedule belum tersedia."
     );
 
     return;
@@ -3190,6 +2371,19 @@ function advanceSeason() {
   }
 
 
+  const confirmAdvance =
+    confirm(
+      `Lanjut ke Season ${
+        game.year + 1
+      }?\n\n` +
+      "Player akan mengalami perkembangan atau penurunan otomatis."
+    );
+
+
+  if (!confirmAdvance)
+    return;
+
+
   developPlayers();
 
 
@@ -3203,10 +2397,6 @@ function advanceSeason() {
 
 
   createStarters();
-
-
-  game.currentMatch =
-    null;
 
 
   saveGame();
@@ -3224,13 +2414,13 @@ function advanceSeason() {
 
 /* =========================================================
    PLAYER DEVELOPMENT
-   NO TRAINING SYSTEM
 ========================================================= */
 
 function developPlayers() {
 
-  if (!game.league)
-    return;
+  if (
+    !game.league
+  ) return;
 
 
   game.league.teams.forEach(
@@ -3240,8 +2430,7 @@ function developPlayers() {
         player => {
 
           player.age =
-            (player.age || 20) +
-            1;
+            (player.age || 20) + 1;
 
 
           const potential =
@@ -3253,7 +2442,8 @@ function developPlayers() {
 
 
           /*
-            Young.
+            Young players
+            mostly improve.
           */
 
           if (
@@ -3265,14 +2455,12 @@ function developPlayers() {
                 ? randomInt(1, 3)
                 : -1;
 
-          }
-
 
           /*
-            Prime.
+            Prime age
           */
 
-          else if (
+          } else if (
             player.age <= 25
           ) {
 
@@ -3281,14 +2469,13 @@ function developPlayers() {
                 ? randomInt(0, 1)
                 : -1;
 
-          }
-
 
           /*
-            Veteran.
+            Older players
+            are more likely to decline.
           */
 
-          else {
+          } else {
 
             change =
               Math.random() < 0.35
@@ -3299,14 +2486,14 @@ function developPlayers() {
 
 
           /*
-            High potential.
+            High potential players
+            can improve faster.
           */
 
           if (
             player.rating <
               potential &&
-            player.potential >=
-              94 &&
+            player.potential >= 94 &&
             change > 0
           ) {
 
@@ -3335,7 +2522,7 @@ function developPlayers() {
 
 
 /* =========================================================
-   HELPERS
+   RANDOM
 ========================================================= */
 
 function randomInt(
@@ -3345,11 +2532,19 @@ function randomInt(
 
   return Math.floor(
     Math.random() *
-      (max - min + 1)
+      (
+        max -
+        min +
+        1
+      )
   ) + min;
 
 }
 
+
+/* =========================================================
+   MONEY
+========================================================= */
 
 function formatMoney(
   value
@@ -3358,35 +2553,11 @@ function formatMoney(
   return new Intl.NumberFormat(
     "id-ID",
     {
-
-      style:
-        "currency",
-
-      currency:
-        "IDR",
-
-      maximumFractionDigits:
-        0
-
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0
     }
   ).format(value);
-
-}
-
-
-/* =========================================================
-   BACK DASHBOARD
-========================================================= */
-
-function backToDashboard() {
-
-  closePlayerModal();
-
-  showScreen(
-    "dashboardScreen"
-  );
-
-  renderDashboard();
 
 }
 
@@ -3397,13 +2568,13 @@ function backToDashboard() {
 
 function restartGame() {
 
-  const confirmed =
+  const confirmRestart =
     confirm(
-      "Yakin ingin memulai game baru?"
+      "Yakin ingin memulai game baru?\n\nSave career sekarang akan dihapus."
     );
 
 
-  if (!confirmed)
+  if (!confirmRestart)
     return;
 
 
@@ -3425,13 +2596,7 @@ document.addEventListener(
   "DOMContentLoaded",
   () => {
 
-    showScreen(
-      "countryScreen"
-    );
-
-
     renderCountries();
-
 
     loadGame();
 
