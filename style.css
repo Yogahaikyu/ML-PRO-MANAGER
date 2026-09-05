@@ -1,38 +1,60 @@
+/* =====================================================
+   MLBB PRO MANAGER
+   V0.5
+===================================================== */
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+
 :root {
+
   --bg: #070a12;
+
   --card: #101522;
+
   --card2: #151b2b;
+
   --border: #252d40;
+
   --text: #ffffff;
+
   --muted: #8e98ad;
+
   --accent: #ffb800;
-  --danger: #ff4d4d;
+
   --success: #22c55e;
+
+  --danger: #ff4d4d;
+
 }
+
 
 html,
 body {
   min-height: 100%;
 }
 
+
 body {
+
   background:
+
     radial-gradient(
       circle at top right,
       #18213a 0,
       transparent 35%
     ),
+
     radial-gradient(
       circle at bottom left,
       #251707 0,
       transparent 30%
     ),
+
     var(--bg);
 
   color: var(--text);
@@ -41,292 +63,458 @@ body {
     Arial,
     Helvetica,
     sans-serif;
+
 }
 
 
-/* =========================
+/* =====================================================
    SCREEN
-========================= */
+===================================================== */
 
 .screen {
+
   display: block;
+
   min-height: 100vh;
-  padding: 30px 0 50px;
+
+  padding:
+    30px
+    0
+    60px;
+
 }
+
 
 .screen.hidden {
+
   display: none !important;
+
 }
 
 
-/* =========================
+/* =====================================================
    CONTAINER
-========================= */
+===================================================== */
 
 .page-container,
 .dashboard-container {
+
   width: 100%;
+
   max-width: 850px;
+
   margin: auto;
-  padding: 0 18px;
+
+  padding:
+    0
+    18px;
+
 }
 
 
-/* =========================
+/* =====================================================
    LOGO
-========================= */
+===================================================== */
 
 .game-logo {
+
   margin-bottom: 45px;
+
 }
+
 
 .logo-main {
+
   font-size: 58px;
+
   font-weight: 900;
+
   letter-spacing: -4px;
+
 }
+
 
 .logo-sub {
+
   color: var(--accent);
+
   font-size: 12px;
+
   font-weight: 900;
+
   letter-spacing: 5px;
+
 }
 
 
-/* =========================
+/* =====================================================
    TEXT
-========================= */
+===================================================== */
 
 .small-label {
+
   color: var(--muted);
+
   font-size: 10px;
+
   font-weight: 800;
+
   letter-spacing: 2px;
+
 }
+
 
 h1 {
+
   margin-top: 8px;
-  font-size: clamp(32px, 8vw, 58px);
+
+  font-size:
+    clamp(
+      32px,
+      8vw,
+      58px
+    );
+
   line-height: 1;
+
 }
+
 
 h2 {
+
   font-size: 22px;
+
 }
+
 
 .subtitle {
+
   color: var(--muted);
+
   line-height: 1.6;
+
   margin-top: 12px;
+
   margin-bottom: 30px;
+
 }
 
 
-/* =========================
+/* =====================================================
+   BACK
+===================================================== */
+
+.back-button {
+
+  border: 0;
+
+  background: transparent;
+
+  color: var(--muted);
+
+  font-size: 14px;
+
+  font-weight: bold;
+
+  padding: 8px 0;
+
+  margin-bottom: 25px;
+
+  cursor: pointer;
+
+}
+
+
+.back-button:hover {
+
+  color: white;
+
+}
+
+
+/* =====================================================
    SELECTION
-========================= */
+===================================================== */
 
 .selection-list {
+
   display: grid;
+
   gap: 12px;
+
   margin-top: 25px;
+
 }
+
 
 .country-card,
 .league-card,
 .team-card {
+
   width: 100%;
 
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
 
   padding: 20px;
 
   background: var(--card);
+
   border: 1px solid var(--border);
+
   border-radius: 14px;
 
   color: white;
+
   text-align: left;
 
   cursor: pointer;
 
   transition: .2s;
+
 }
+
 
 .country-card:hover,
 .league-card:hover,
 .team-card:hover {
+
   border-color: var(--accent);
-  transform: translateY(-2px);
+
+  transform:
+    translateY(-2px);
+
 }
+
 
 .country-card strong,
 .league-card strong,
 .team-card strong {
+
   font-size: 17px;
+
 }
+
 
 .country-flag {
+
   font-size: 30px;
+
 }
+
 
 .card-right {
-  color: var(--muted);
-  font-size: 13px;
-}
 
-
-/* =========================
-   BACK
-========================= */
-
-.back-button {
-  border: 0;
-  background: transparent;
   color: var(--muted);
 
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 12px;
 
-  padding: 8px 0;
-  margin-bottom: 25px;
+  margin-top: 5px;
 
-  cursor: pointer;
-}
-
-.back-button:hover {
-  color: white;
 }
 
 
-/* =========================
+/* =====================================================
    DASHBOARD
-========================= */
+===================================================== */
 
 .top-bar {
+
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
 
   padding-bottom: 22px;
-  border-bottom: 1px solid var(--border);
+
+  border-bottom:
+    1px solid
+    var(--border);
+
 }
+
 
 .top-bar h1 {
-  font-size: clamp(25px, 7vw, 42px);
+
+  font-size:
+    clamp(
+      25px,
+      7vw,
+      42px
+    );
+
 }
 
+
 .icon-button {
+
   width: 44px;
+
   height: 44px;
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
+
   border-radius: 12px;
 
-  background: var(--card);
+  background:
+    var(--card);
+
   color: white;
 
   font-size: 20px;
+
   cursor: pointer;
+
 }
 
 
-/* =========================
+/* =====================================================
    DASHBOARD CARD
-========================= */
+===================================================== */
 
 .dashboard-card {
+
   margin-top: 20px;
 
   background: var(--card);
-  border: 1px solid var(--border);
+
+  border:
+    1px solid
+    var(--border);
 
   border-radius: 16px;
+
   padding: 16px;
+
 }
+
 
 .stat-grid {
+
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+
+  grid-template-columns:
+    repeat(
+      3,
+      1fr
+    );
+
   gap: 10px;
+
 }
+
 
 .stat-box {
+
   padding: 15px;
 
-  background: var(--card2);
+  background:
+    var(--card2);
+
   border-radius: 12px;
+
 }
 
+
 .stat-box span {
+
   display: block;
 
   color: var(--muted);
 
   font-size: 9px;
+
   font-weight: bold;
+
   letter-spacing: 1px;
+
 }
 
+
 .stat-box strong {
+
   display: block;
 
   margin-top: 8px;
 
   font-size: 16px;
+
 }
 
 
-/* =========================
+/* =====================================================
    GAME SECTION
-========================= */
+===================================================== */
 
 .game-section {
+
   margin-top: 30px;
+
 }
+
 
 .section-heading {
+
   margin-bottom: 14px;
+
 }
+
 
 .section-heading h2 {
+
   margin-top: 5px;
+
 }
 
 
-/* =========================
+/* =====================================================
    GAME CARD
-========================= */
+===================================================== */
 
 .game-card {
+
   background: var(--card);
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
   border-radius: 15px;
 
   padding: 20px;
+
 }
+
 
 .game-card h3 {
+
   font-size: 18px;
+
 }
+
 
 .game-card p {
+
   margin-top: 7px;
+
   color: var(--muted);
+
 }
 
 
-/* =========================
+/* =====================================================
    BUTTON
-========================= */
+===================================================== */
 
 .primary-button,
 .secondary-button {
+
   width: 100%;
 
   padding: 16px;
@@ -334,109 +522,169 @@ h2 {
   border-radius: 13px;
 
   font-weight: 900;
+
   font-size: 15px;
 
   cursor: pointer;
+
 }
+
 
 .primary-button {
+
   border: 0;
 
-  background: var(--accent);
+  background:
+    var(--accent);
+
   color: #111;
+
 }
+
 
 .primary-button:disabled {
+
   opacity: .5;
+
   cursor: not-allowed;
+
 }
+
 
 .secondary-button {
-  border: 1px solid var(--border);
 
-  background: var(--card);
+  border:
+    1px solid
+    var(--border);
+
+  background:
+    var(--card);
+
   color: white;
+
 }
+
 
 .secondary-button:hover {
-  border-color: var(--accent);
+
+  border-color:
+    var(--accent);
+
 }
 
 
-/* =========================
-   ROSTER / STANDINGS
-========================= */
+/* =====================================================
+   ROSTER
+===================================================== */
 
 .match-player {
+
   display: flex;
+
   align-items: center;
+
   justify-content: space-between;
 
   gap: 12px;
 
-  background: var(--card);
+  background:
+    var(--card);
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
   border-radius: 12px;
 
-  padding: 13px 14px;
+  padding:
+    13px
+    14px;
 
   margin-bottom: 8px;
+
 }
+
 
 .match-player-role {
+
   color: var(--muted);
+
   font-size: 12px;
+
   margin-top: 3px;
+
 }
 
+
 .match-player button {
+
   margin-top: 6px;
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  background: var(--card2);
+  background:
+    var(--card2);
+
   color: white;
 
   border-radius: 7px;
 
-  padding: 5px 8px;
+  padding:
+    5px
+    8px;
 
   font-size: 10px;
+
   font-weight: bold;
 
   cursor: pointer;
+
 }
 
 
-/* =========================
+/* =====================================================
    MENU
-========================= */
+===================================================== */
 
 .menu-grid {
+
   display: grid;
 
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns:
+    repeat(
+      2,
+      1fr
+    );
 
   gap: 10px;
+
 }
 
+
 .menu-button {
+
   min-height: 105px;
 
   display: flex;
+
   flex-direction: column;
+
   justify-content: center;
+
   align-items: flex-start;
 
   gap: 10px;
 
   padding: 18px;
 
-  background: var(--card);
+  background:
+    var(--card);
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
   border-radius: 14px;
 
@@ -445,37 +693,58 @@ h2 {
   cursor: pointer;
 
   text-align: left;
+
 }
+
 
 .menu-button:hover {
-  border-color: var(--accent);
+
+  border-color:
+    var(--accent);
+
 }
+
 
 .menu-button span {
+
   font-size: 25px;
+
 }
+
 
 .menu-button strong {
+
   font-size: 15px;
+
 }
 
 
-/* =========================
+/* =====================================================
    MATCH
-========================= */
+===================================================== */
 
 .match-header {
+
   margin-bottom: 20px;
+
 }
+
 
 .match-header h1 {
+
   font-size: 32px;
+
 }
 
-.match-info {
-  background: var(--card);
 
-  border: 1px solid var(--border);
+.match-info-text {
+
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
 
   border-radius: 12px;
 
@@ -486,39 +755,57 @@ h2 {
   color: var(--muted);
 
   font-size: 13px;
+
 }
 
+
 .match-teams {
+
   display: flex;
 
   align-items: center;
+
   justify-content: space-between;
 
   gap: 8px;
 
   margin: 20px 0;
+
 }
 
+
 .match-team {
+
   width: 42%;
 
-  background: var(--card);
+  background:
+    var(--card);
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
   border-radius: 16px;
 
-  padding: 18px 8px;
+  padding:
+    18px
+    8px;
 
   text-align: center;
+
 }
 
+
 .team-logo {
+
   width: 58px;
+
   height: 58px;
 
   display: flex;
+
   align-items: center;
+
   justify-content: center;
 
   margin: auto;
@@ -527,35 +814,55 @@ h2 {
 
   background: #080b13;
 
-  border: 1px solid var(--border);
+  border:
+    1px solid
+    var(--border);
 
-  color: var(--accent);
+  color:
+    var(--accent);
 
   font-weight: 900;
+
 }
+
 
 .match-team h2 {
+
   font-size: 15px;
+
   margin-top: 10px;
+
 }
 
+
 .team-rating {
+
   margin-top: 5px;
 
   color: var(--muted);
 
   font-size: 12px;
+
 }
+
 
 .match-vs {
+
   font-weight: 900;
+
   font-size: 18px;
+
 }
 
-.match-probability {
-  background: var(--card);
 
-  border: 1px solid var(--border);
+.match-probability {
+
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
 
   border-radius: 14px;
 
@@ -564,123 +871,762 @@ h2 {
   text-align: center;
 
   margin-bottom: 20px;
+
 }
 
+
 .match-probability span {
+
   display: block;
 
   color: var(--muted);
 
   font-size: 10px;
+
   letter-spacing: 1px;
+
 }
 
+
 .match-probability strong {
+
   display: block;
 
   margin-top: 5px;
 
-  color: var(--accent);
+  color:
+    var(--accent);
 
   font-size: 32px;
+
 }
 
 
-/* =========================
+/* =====================================================
    RESULT
-========================= */
+===================================================== */
 
 .match-result {
+
   margin-top: 18px;
 
   padding: 22px;
 
-  background: var(--card);
+  background:
+    var(--card);
 
   border-radius: 16px;
 
   text-align: center;
+
 }
 
+
 .result-score {
+
   margin: 15px 0;
 
   font-size: 48px;
+
   font-weight: 900;
+
 }
+
 
 .result-win {
-  border: 2px solid var(--success);
+
+  border:
+    2px solid
+    var(--success);
+
 }
+
 
 .result-loss {
-  border: 2px solid var(--danger);
+
+  border:
+    2px solid
+    var(--danger);
+
 }
 
 
-/* =========================
+/* =====================================================
+   TRANSFER MARKET
+===================================================== */
+
+.market-info {
+
+  display: grid;
+
+  grid-template-columns:
+    1fr
+    1fr;
+
+  gap: 10px;
+
+  margin-top: 20px;
+
+}
+
+
+.market-info > div {
+
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 13px;
+
+  padding: 15px;
+
+}
+
+
+.market-info span {
+
+  display: block;
+
+  color: var(--muted);
+
+  font-size: 9px;
+
+  font-weight: bold;
+
+  letter-spacing: 1px;
+
+}
+
+
+.market-info strong {
+
+  display: block;
+
+  margin-top: 8px;
+
+  font-size: 17px;
+
+}
+
+
+.market-controls {
+
+  display: grid;
+
+  grid-template-columns:
+    1fr
+    140px;
+
+  gap: 10px;
+
+  margin:
+    18px
+    0;
+
+}
+
+
+.market-controls input,
+.market-controls select {
+
+  width: 100%;
+
+  padding: 14px;
+
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 10px;
+
+  color: white;
+
+  outline: none;
+
+}
+
+
+.market-controls input:focus,
+.market-controls select:focus {
+
+  border-color:
+    var(--accent);
+
+}
+
+
+.transfer-list {
+
+  display: grid;
+
+  gap: 10px;
+
+}
+
+
+.transfer-card {
+
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 14px;
+
+  padding: 15px;
+
+}
+
+
+.transfer-top {
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 10px;
+
+}
+
+
+.transfer-player-name {
+
+  font-size: 17px;
+
+  font-weight: 900;
+
+}
+
+
+.transfer-role {
+
+  color:
+    var(--accent);
+
+  font-size: 10px;
+
+  font-weight: bold;
+
+  margin-top: 4px;
+
+}
+
+
+.transfer-team {
+
+  color:
+    var(--muted);
+
+  font-size: 11px;
+
+  margin-top: 4px;
+
+}
+
+
+.transfer-rating {
+
+  text-align: right;
+
+}
+
+
+.transfer-rating strong {
+
+  display: block;
+
+  font-size: 25px;
+
+}
+
+
+.transfer-rating span {
+
+  color:
+    var(--muted);
+
+  font-size: 9px;
+
+}
+
+
+.transfer-bottom {
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-top: 15px;
+
+  padding-top: 12px;
+
+  border-top:
+    1px solid
+    var(--border);
+
+}
+
+
+.transfer-price {
+
+  font-size: 13px;
+
+  font-weight: bold;
+
+}
+
+
+.transfer-actions {
+
+  display: flex;
+
+  gap: 6px;
+
+}
+
+
+.market-button {
+
+  border:
+    1px solid
+    var(--border);
+
+  background:
+    var(--card2);
+
+  color: white;
+
+  border-radius: 8px;
+
+  padding:
+    8px
+    10px;
+
+  font-size: 10px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+
+}
+
+
+.market-button.buy {
+
+  background:
+    var(--accent);
+
+  color: #111;
+
+  border-color:
+    var(--accent);
+
+}
+
+
+.market-button:disabled {
+
+  opacity: .35;
+
+  cursor: not-allowed;
+
+}
+
+
+.empty-market {
+
+  padding: 30px;
+
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 14px;
+
+  text-align: center;
+
+  color: var(--muted);
+
+}
+
+
+/* =====================================================
+   MODAL
+===================================================== */
+
+.modal {
+
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+
+  align-items: flex-end;
+
+  justify-content: center;
+
+  background:
+    rgba(
+      0,
+      0,
+      0,
+      .75
+    );
+
+}
+
+
+.modal-box {
+
+  width: 100%;
+
+  max-width: 600px;
+
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  background:
+    var(--card);
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius:
+    20px
+    20px
+    0
+    0;
+
+  padding: 24px;
+
+  position: relative;
+
+}
+
+
+.modal-close {
+
+  position: absolute;
+
+  right: 18px;
+
+  top: 15px;
+
+  width: 36px;
+
+  height: 36px;
+
+  border: 0;
+
+  border-radius: 50%;
+
+  background:
+    var(--card2);
+
+  color: white;
+
+  font-size: 22px;
+
+  cursor: pointer;
+
+}
+
+
+.player-detail {
+
+  padding-top: 10px;
+
+}
+
+
+.player-detail h2 {
+
+  font-size: 28px;
+
+  margin-bottom: 5px;
+
+}
+
+
+.player-detail-role {
+
+  color:
+    var(--accent);
+
+  font-size: 12px;
+
+  font-weight: bold;
+
+}
+
+
+.player-detail-team {
+
+  color:
+    var(--muted);
+
+  margin-top: 5px;
+
+}
+
+
+.detail-grid {
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      1fr
+    );
+
+  gap: 10px;
+
+  margin:
+    20px
+    0;
+
+}
+
+
+.detail-box {
+
+  background:
+    var(--card2);
+
+  border-radius: 10px;
+
+  padding: 13px;
+
+}
+
+
+.detail-box span {
+
+  display: block;
+
+  color:
+    var(--muted);
+
+  font-size: 9px;
+
+}
+
+
+.detail-box strong {
+
+  display: block;
+
+  margin-top: 5px;
+
+  font-size: 18px;
+
+}
+
+
+.detail-price {
+
+  margin:
+    15px
+    0;
+
+  padding: 15px;
+
+  background:
+    #1d180b;
+
+  border:
+    1px solid
+    #594719;
+
+  border-radius: 12px;
+
+}
+
+
+.detail-price span {
+
+  display: block;
+
+  color:
+    var(--muted);
+
+  font-size: 10px;
+
+}
+
+
+.detail-price strong {
+
+  display: block;
+
+  color:
+    var(--accent);
+
+  font-size: 24px;
+
+  margin-top: 5px;
+
+}
+
+
+/* =====================================================
    HIDDEN
-========================= */
+===================================================== */
 
 .hidden {
+
   display: none !important;
+
 }
 
 
-/* =========================
+/* =====================================================
    MOBILE
-========================= */
+===================================================== */
 
 @media (max-width: 600px) {
 
   .screen {
+
     padding-top: 24px;
+
   }
+
 
   .page-container,
   .dashboard-container {
+
     padding-left: 14px;
+
     padding-right: 14px;
+
   }
+
 
   .game-logo {
+
     margin-bottom: 35px;
+
   }
+
 
   .logo-main {
+
     font-size: 50px;
+
   }
+
 
   .stat-grid {
-    grid-template-columns: 1fr 1fr;
+
+    grid-template-columns:
+      1fr
+      1fr;
+
   }
+
 
   .stat-box:last-child {
-    grid-column: span 2;
+
+    grid-column:
+      span 2;
+
   }
+
+
+  .market-controls {
+
+    grid-template-columns:
+      1fr;
+
+  }
+
 
   .match-teams {
+
     gap: 5px;
+
   }
+
 
   .match-team {
+
     width: 44%;
+
   }
+
 
   .match-team h2 {
+
     font-size: 13px;
+
   }
 
+
   .menu-grid {
-    grid-template-columns: 1fr 1fr;
+
+    grid-template-columns:
+      1fr
+      1fr;
+
   }
 
 }
 
+
 @media (max-width: 360px) {
 
   .menu-grid {
-    grid-template-columns: 1fr;
+
+    grid-template-columns:
+      1fr;
+
+  }
+
+
+  .transfer-bottom {
+
+    flex-direction: column;
+
+    align-items: stretch;
+
+  }
+
+
+  .transfer-actions {
+
+    width: 100%;
+
+  }
+
+
+  .market-button {
+
+    flex: 1;
+
   }
 
 }
