@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0f19">
   <title>MLBB Pro Manager</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <div id="app">
@@ -19,317 +21,440 @@
     </div>
 
     <div class="card">
-      <h2>Pilih Negara</h2>
+      <h2>🌎 Pilih Negara</h2>
       <div id="countryList"></div>
     </div>
   </section>
 
+
   <!-- LEAGUE -->
   <section id="leagueScreen" class="screen">
-    <button class="back" onclick="showScreen('countryScreen')">← Kembali</button>
+    <button class="back" onclick="showScreen('countryScreen')">
+      ← Kembali
+    </button>
 
     <div class="page-title">
-      <h1>Pilih Liga</h1>
-      <p id="selectedCountryText"></p>
+      <h1 id="leagueCountryTitle">League</h1>
+      <p>Pilih liga yang ingin lu mainkan.</p>
     </div>
 
-    <div id="leagueList"></div>
+    <div class="card">
+      <div id="leagueList"></div>
+    </div>
   </section>
+
 
   <!-- TEAM -->
   <section id="teamScreen" class="screen">
-    <button class="back" onclick="showScreen('leagueScreen')">← Kembali</button>
+    <button class="back" onclick="showScreen('leagueScreen')">
+      ← Kembali
+    </button>
 
     <div class="page-title">
       <h1>Pilih Tim</h1>
-      <p id="selectedLeagueText"></p>
+      <p>Pilih organisasi yang akan lu kelola.</p>
     </div>
 
-    <div id="teamList"></div>
+    <div class="card">
+      <div id="teamList"></div>
+    </div>
   </section>
+
 
   <!-- MANAGER SETUP -->
   <section id="managerSetupScreen" class="screen">
     <div class="page-title">
-      <h1>Manager Career</h1>
-      <p>Bangun kariermu dari awal.</p>
+      <h1>👔 Manager Career</h1>
+      <p>Bangun karier lu dari awal.</p>
     </div>
 
     <div class="card">
+
       <label>Nama Manager</label>
-      <input id="managerName" type="text" placeholder="Contoh: Coach Player">
+      <input
+        id="managerName"
+        type="text"
+        placeholder="Contoh: Player Satu"
+        maxlength="25"
+      >
 
       <label>Target Musim</label>
-      <select id="managerTarget">
-        <option value="champion">🏆 Juara</option>
-        <option value="top3">🥉 Top 3</option>
-        <option value="playoff">🔥 Playoff</option>
-        <option value="build">🏗️ Build Team</option>
-      </select>
 
-      <button class="primary" onclick="startCareer()">MULAI CAREER</button>
+      <div class="target-grid">
+
+        <button class="target-btn" onclick="selectTarget('champion')" id="target-champion">
+          🏆
+          <strong>Juara</strong>
+          <span>Target tertinggi</span>
+        </button>
+
+        <button class="target-btn" onclick="selectTarget('top3')" id="target-top3">
+          🥉
+          <strong>Top 3</strong>
+          <span>Minimal posisi 3</span>
+        </button>
+
+        <button class="target-btn" onclick="selectTarget('playoff')" id="target-playoff">
+          ⚔️
+          <strong>Playoff</strong>
+          <span>Masuk playoff</span>
+        </button>
+
+        <button class="target-btn" onclick="selectTarget('build')" id="target-build">
+          🏗️
+          <strong>Build Team</strong>
+          <span>Bangun tim</span>
+        </button>
+
+      </div>
+
+      <button class="primary" onclick="startCareer()">
+        🚀 MULAI KARIER
+      </button>
+
     </div>
   </section>
+
 
   <!-- DASHBOARD -->
   <section id="dashboardScreen" class="screen">
 
-    <header class="topbar">
+    <div class="topbar">
       <div>
-        <small id="managerDisplay"></small>
-        <h2 id="teamDisplay"></h2>
+        <small>MANAGER</small>
+        <h2 id="dashManager"></h2>
       </div>
-      <button class="save-btn" onclick="saveGame()">💾</button>
-    </header>
 
-    <div class="stats-grid">
-      <div class="stat">
-        <span>💰 Budget</span>
-        <strong id="budgetDisplay"></strong>
-      </div>
-      <div class="stat">
-        <span>⭐ Reputation</span>
-        <strong id="reputationDisplay"></strong>
-      </div>
-      <div class="stat">
-        <span>📅 Season</span>
-        <strong id="seasonDisplay"></strong>
-      </div>
-      <div class="stat">
-        <span>🏢 Level</span>
-        <strong id="orgDisplay"></strong>
+      <div class="season">
+        <small>SEASON</small>
+        <strong id="dashSeason"></strong>
       </div>
     </div>
 
-    <div id="seasonBanner" class="season-banner"></div>
+    <div class="team-header card">
+      <div>
+        <small>TEAM</small>
+        <h1 id="dashTeam"></h1>
+        <p id="dashLeague"></p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+
+      <div class="stat card">
+        <span>💰 Budget</span>
+        <strong id="dashBudget"></strong>
+      </div>
+
+      <div class="stat card">
+        <span>⭐ Reputation</span>
+        <strong id="dashRep"></strong>
+      </div>
+
+      <div class="stat card">
+        <span>🏢 Organization</span>
+        <strong id="dashOrg"></strong>
+      </div>
+
+      <div class="stat card">
+        <span>🎯 Target</span>
+        <strong id="dashTarget"></strong>
+      </div>
+
+    </div>
 
     <div class="card next-match-card">
-      <div class="section-head">
-        <h3>⚔️ Pertandingan Berikutnya</h3>
-      </div>
+      <h3>⚔️ Next Match</h3>
       <div id="nextMatch"></div>
     </div>
 
     <div class="menu-grid">
-      <button onclick="openManager()">👔<span>Manager</span></button>
-      <button onclick="openRoster()">👥<span>Roster</span></button>
-      <button onclick="openTransfer()">💰<span>Transfer</span></button>
-      <button onclick="openSchedule()">📅<span>Schedule</span></button>
-      <button onclick="openScouting()">🔎<span>Scouting</span></button>
-      <button onclick="openStandings()">🏆<span>Klasemen</span></button>
-      <button onclick="openHistory()">📖<span>History</span></button>
-      <button onclick="saveGame()">💾<span>Save</span></button>
+
+      <button onclick="openRoster()">
+        👥
+        <span>Roster</span>
+      </button>
+
+      <button onclick="openTransfer()">
+        🔄
+        <span>Transfer</span>
+      </button>
+
+      <button onclick="openSchedule()">
+        📅
+        <span>Schedule</span>
+      </button>
+
+      <button onclick="openScouting()">
+        🔎
+        <span>Scouting</span>
+      </button>
+
+      <button onclick="openWorld()">
+        🌎
+        <span>World</span>
+      </button>
+
+      <button onclick="openHistory()">
+        📜
+        <span>History</span>
+      </button>
+
     </div>
 
-    <div class="danger-area">
-      <button class="danger" onclick="restartGame()">Restart Career</button>
+    <div class="dashboard-actions">
+
+      <button class="primary" onclick="playNextMatch()">
+        ⚔️ MAIN MATCH
+      </button>
+
+      <button class="secondary" onclick="advanceDay()">
+        ⏩ NEXT DAY
+      </button>
+
+      <button class="secondary" onclick="saveGame(true)">
+        💾 SAVE GAME
+      </button>
+
+      <button class="danger" onclick="restartGame()">
+        🔄 RESTART
+      </button>
+
     </div>
+
   </section>
 
-  <!-- MANAGER -->
-  <section id="managerScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
-
-    <div class="page-title">
-      <h1>👔 Manager</h1>
-      <p id="managerInfo"></p>
-    </div>
-
-    <div class="card">
-      <h3>Target Musim</h3>
-      <select id="targetSelect" onchange="changeTarget()">
-        <option value="champion">🏆 Juara</option>
-        <option value="top3">🥉 Top 3</option>
-        <option value="playoff">🔥 Playoff</option>
-        <option value="build">🏗️ Build Team</option>
-      </select>
-    </div>
-
-    <div class="card">
-      <h3>🏢 Organisasi</h3>
-      <p>Level: <strong id="managerOrgLevel"></strong></p>
-      <p>Bonus budget & fasilitas meningkat setiap upgrade.</p>
-      <button class="primary" onclick="upgradeOrganization()">UPGRADE ORGANISASI</button>
-    </div>
-
-    <div class="card">
-      <h3>📨 Contract Requests</h3>
-      <div id="requestsList"></div>
-    </div>
-  </section>
 
   <!-- ROSTER -->
   <section id="rosterScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
+
+    <button class="back" onclick="backDashboard()">
+      ← Dashboard
+    </button>
 
     <div class="page-title">
       <h1>👥 Roster</h1>
-      <p id="rosterCount"></p>
-    </div>
-
-    <div id="rosterList"></div>
-  </section>
-
-  <!-- TRANSFER -->
-  <section id="transferScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
-
-    <div class="page-title">
-      <h1>💰 Transfer Market</h1>
-      <p>Rekrut pemain untuk memperkuat tim.</p>
+      <p>Starting 5 dan pemain cadangan.</p>
     </div>
 
     <div class="card">
-      <strong>Budget: <span id="transferBudget"></span></strong>
+      <div id="rosterList"></div>
+    </div>
+
+  </section>
+
+
+  <!-- TRANSFER -->
+  <section id="transferScreen" class="screen">
+
+    <button class="back" onclick="backDashboard()">
+      ← Dashboard
+    </button>
+
+    <div class="page-title">
+      <h1>🔄 Transfer Market</h1>
+      <p>Cari pemain baru untuk memperkuat tim.</p>
+    </div>
+
+    <div class="card">
+      <div id="transferInfo"></div>
     </div>
 
     <div id="transferList"></div>
+
   </section>
+
 
   <!-- SCHEDULE -->
   <section id="scheduleScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
+
+    <button class="back" onclick="backDashboard()">
+      ← Dashboard
+    </button>
 
     <div class="page-title">
       <h1>📅 Schedule</h1>
-      <p id="schedulePhase"></p>
+      <p>Jadwal pertandingan musim ini.</p>
     </div>
 
     <div id="scheduleList"></div>
+
   </section>
+
 
   <!-- SCOUTING -->
   <section id="scoutingScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
+
+    <button class="back" onclick="backDashboard()">
+      ← Dashboard
+    </button>
 
     <div class="page-title">
       <h1>🔎 Scouting</h1>
       <p>Cari pemain potensial.</p>
     </div>
 
-    <div id="scoutingList"></div>
+    <div class="card">
+      <button class="primary" onclick="runScouting()">
+        🔎 SCOUT PLAYER
+      </button>
+
+      <div id="scoutingResult"></div>
+    </div>
+
   </section>
 
-  <!-- STANDINGS -->
-  <section id="standingsScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
+
+  <!-- WORLD -->
+  <section id="worldScreen" class="screen">
+
+    <button class="back" onclick="backDashboard()">
+      ← Dashboard
+    </button>
 
     <div class="page-title">
-      <h1>🏆 Klasemen</h1>
-      <p id="standingsPhase"></p>
+      <h1>🌎 World Stage</h1>
+      <p>Kompetisi MLBB internasional.</p>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Team</th>
-            <th>M</th>
-            <th>W</th>
-            <th>L</th>
-            <th>GD</th>
-            <th>PTS</th>
-          </tr>
-        </thead>
-        <tbody id="standingsTable"></tbody>
-      </table>
+    <div class="card">
+      <h3>🌍 World Ranking</h3>
+      <div id="worldRanking"></div>
     </div>
+
+    <div class="card">
+      <h3>🏆 MSC</h3>
+      <div id="mscStatus"></div>
+
+      <button class="primary" onclick="openMSC()">
+        OPEN MSC
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>👑 M-Series</h3>
+      <div id="mSeriesStatus"></div>
+
+      <button class="primary" onclick="openMSeries()">
+        OPEN M-SERIES
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>✈️ International Transfer</h3>
+      <div id="internationalTransfer"></div>
+    </div>
+
   </section>
 
-  <!-- HISTORY -->
-  <section id="historyScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
+
+  <!-- TOURNAMENT -->
+  <section id="tournamentScreen" class="screen">
+
+    <button class="back" onclick="openWorld()">
+      ← World
+    </button>
 
     <div class="page-title">
-      <h1>📖 Season History</h1>
-      <p>Perjalanan karier manager.</p>
+      <h1 id="tournamentTitle">🏆 Tournament</h1>
+      <p id="tournamentSubtitle"></p>
     </div>
 
-    <div id="historyList"></div>
+    <div id="tournamentContent"></div>
+
   </section>
+
 
   <!-- MATCH -->
   <section id="matchScreen" class="screen">
 
-    <div class="match-header">
-      <small id="matchStage"></small>
-      <h2 id="matchTitle"></h2>
-      <p id="matchdayText"></p>
+    <div class="page-title">
+      <h1>⚔️ MATCH DAY</h1>
+      <p id="matchStage"></p>
     </div>
 
-    <div class="match-box">
-      <div class="match-team">
-        <div class="team-icon">🏠</div>
-        <strong id="homeTeam"></strong>
-        <span id="homeRating"></span>
+    <div class="match-box card">
+
+      <div class="team-side">
+        <strong id="matchHome"></strong>
+        <span id="matchHomeRating"></span>
       </div>
 
       <div class="vs">
-        <strong>VS</strong>
-        <span>BO3</span>
+        VS
       </div>
 
-      <div class="match-team">
-        <div class="team-icon">⚔️</div>
-        <strong id="awayTeam"></strong>
-        <span id="awayRating"></span>
+      <div class="team-side">
+        <strong id="matchAway"></strong>
+        <span id="matchAwayRating"></span>
+      </div>
+
+    </div>
+
+    <div class="card">
+      <h3>🎯 Win Chance</h3>
+      <div class="probability">
+        <span id="homeChance"></span>
+        <span id="awayChance"></span>
       </div>
     </div>
 
     <div class="card">
-      <h3>Starting 5</h3>
-      <div id="startingFive"></div>
+      <h3>👥 Starting 5</h3>
+      <div id="matchRoster"></div>
     </div>
 
-    <div class="card">
-      <h3>Peluang Menang</h3>
-      <div class="chance">
-        <div>
-          <span id="homeChance"></span>
-          <small>Home</small>
-        </div>
-        <div>
-          <span id="awayChance"></span>
-          <small>Away</small>
-        </div>
-      </div>
-    </div>
+    <button class="primary" onclick="simulateCurrentMatch()">
+      ⚔️ PLAY MATCH
+    </button>
 
-    <button class="primary huge" onclick="playMatch()">PLAY MATCH</button>
   </section>
+
 
   <!-- RESULT -->
   <section id="resultScreen" class="screen">
 
-    <div class="result-box">
-      <div id="resultIcon"></div>
-      <small id="resultStage"></small>
-      <h1 id="resultTitle"></h1>
-      <div id="resultScore"></div>
+    <div class="page-title">
+      <h1>🏁 Match Result</h1>
+    </div>
+
+    <div class="card result-card">
+
+      <div id="resultTeams"></div>
+
+      <div class="big-score" id="resultScore"></div>
+
+      <h2 id="resultWinner"></h2>
+
       <p id="resultMessage"></p>
+
     </div>
 
-    <div class="card">
-      <div id="resultDetails"></div>
-    </div>
+    <button class="primary" onclick="finishMatch()">
+      CONTINUE
+    </button>
 
-    <button class="primary" onclick="continueAfterMatch()">LANJUT</button>
   </section>
 
-  <!-- PLAYOFF -->
-  <section id="playoffScreen" class="screen">
-    <button class="back" onclick="backDashboard()">← Dashboard</button>
+
+  <!-- HISTORY -->
+  <section id="historyScreen" class="screen">
+
+    <button class="back" onclick="backDashboard()">
+      ← Dashboard
+    </button>
 
     <div class="page-title">
-      <h1>🔥 Playoffs</h1>
-      <p id="playoffStatus"></p>
+      <h1>📜 Career History</h1>
+      <p>Perjalanan karier manager.</p>
     </div>
 
-    <div id="playoffBracket"></div>
+    <div id="historyList"></div>
+
   </section>
 
 </div>
+
 
 <script src="data/countries.js"></script>
 <script src="data/mpl-id.js"></script>
