@@ -1,16 +1,10 @@
 /* =========================================================
    MLBB PRO MANAGER
-   COUNTRIES / REGIONS V1.5
+   COUNTRIES DATABASE
+   V1.5
    ========================================================= */
 
-"use strict";
-
-const countries = window.MLBB_COUNTRIES || [];
-
-const SAVE_KEY = "mlbb_pro_manager_save_v15";
-
 window.MLBB_COUNTRIES = [
-
   {
     id: "ID",
     name: "Indonesia",
@@ -66,11 +60,13 @@ window.MLBB_COUNTRIES = [
     flag: "🌎",
     description: "Mobile Legends Latin America"
   }
-
 ];
 
+/* =========================================================
+   DEBUG
+   ========================================================= */
+
 console.log(
-  "[MLBB PM] countries.js loaded:",
-  window.MLBB_COUNTRIES.length,
-  "regions"
+  "MLBB_COUNTRIES loaded:",
+  window.MLBB_COUNTRIES
 );
