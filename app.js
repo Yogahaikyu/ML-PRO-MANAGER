@@ -1,274 +1,328 @@
 /* =========================================================
-   MLBB PRO MANAGER
-   VERSION 1.3
-   PART 1 / 2
+   MLBB PRO MANAGER V1.5
+   PLAYER + LINEUP + TRANSFER + MATCH + SEASON
    ========================================================= */
 
-const SAVE_KEY = "mlbb_pro_manager_save_v13";
-const OLD_SAVE_KEYS = [
-  "mlbb_pro_manager_save_v12",
-  "mlbb_pro_manager_save_v11",
-  "mlbb_pro_manager_save_v10"
+"use strict";
+
+/* =========================================================
+   CONFIG
+   ========================================================= */
+
+const SAVE_KEY = "mlbb_pro_manager_save_v15";
+
+const ROLE_ORDER = [
+  "EXP",
+  "JG",
+  "MID",
+  "GOLD",
+  "ROAM"
 ];
 
 let game = null;
+
+let selectedCountry = null;
+let selectedLeagueId = null;
+let selectedTeamId = null;
 let selectedTarget = "top3";
+
+let currentMatch = null;
+let currentPlayerId = null;
+
 
 /* =========================================================
    BASIC HELPERS
    ========================================================= */
 
-function uid(prefix = "id") {
-  return prefix + "_" + Math.random().toString(36).slice(2, 10);
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj));
 }
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
+function uid(prefix = "id") {
+  return prefix + "_" +
+    Date.now().toString(36) +
+    "_" +
+    Math.random().toString(36).slice(2, 8);
 }
 
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function randFloat(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
 function chance(percent) {
   return Math.random() * 100 < percent;
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function money(value) {
-  return "Rp " + Math.round(value || 0).toLocaleString("id-ID");
+
+  value = Number(value || 0);
+
+  if (value >= 1000000000) {
+    return "Rp " + (value / 1000000000).toFixed(1) + " M";
+  }
+
+  if (value >= 1000000) {
+    return "Rp " + (value / 1000000).toFixed(1) + " Jt";
+  }
+
+  if (value >= 1000) {
+    return "Rp " + Math.round(value / 1000) + " K";
+  }
+
+  return "Rp " + value.toLocaleString("id-ID");
 }
 
-function avg(arr) {
-  if (!arr.length) return 0;
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
+function formatDate(date) {
 
-function yearOf(date) {
-  return new Date(date).getFullYear();
-}
+  const d = new Date(date + "T12:00:00");
 
-function formatDate(dateString) {
-  const d = new Date(dateString);
   return d.toLocaleDateString("id-ID", {
     day: "2-digit",
     month: "short",
     year: "numeric"
   });
+
 }
 
-function addDays(dateString, days) {
-  const d = new Date(dateString);
+function addDays(date, days) {
+
+  const d = new Date(date + "T12:00:00");
+
   d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
+
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0")
+  ].join("-");
+
 }
 
-function addMonths(dateString, months) {
-  const d = new Date(dateString);
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().split("T")[0];
+function normalizeRole(role) {
+
+  role = String(role || "").toUpperCase();
+
+  if (role === "JUNGLE") return "JG";
+  if (role === "JUNG") return "JG";
+  if (role === "MIDLANE") return "MID";
+  if (role === "GOLDLANE") return "GOLD";
+  if (role === "ROAMER") return "ROAM";
+
+  return ROLE_ORDER.includes(role) ? role : "EXP";
 }
 
-function monthOf(dateString) {
-  return new Date(dateString).getMonth() + 1;
+function escapeHtml(text) {
+
+  return String(text ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
 }
 
-function getPhase() {
-  if (!game) return "Preseason";
-
-  if (game.phase === "regular") return "Regular Season";
-  if (game.phase === "playoff") return "Playoffs";
-  if (game.phase === "final") return "Grand Final";
-  return "Preseason";
-}
 
 /* =========================================================
-   DATA ACCESS
+   LEAGUE DATABASE
    ========================================================= */
 
-function allLeagues() {
+function getAllLeagues() {
+
   return [
     typeof MPL_ID_2026 !== "undefined" ? MPL_ID_2026 : null,
     typeof MPL_PH_2026 !== "undefined" ? MPL_PH_2026 : null,
     typeof MPL_KH_2026 !== "undefined" ? MPL_KH_2026 : null
   ].filter(Boolean);
+
 }
 
 function getLeague(id) {
-  return allLeagues().find(l => l.id === id);
+
+  return getAllLeagues().find(x => x.id === id);
+
 }
 
-function getTeamData(teamId, leagueId) {
-  const league = getLeague(leagueId);
-  if (!league) return null;
-
-  return league.teams.find(t => t.id === teamId) || null;
-}
-
-function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
-
-function normalizePlayer(player, teamId) {
-  const p = player || {};
-
-  return {
-    id: p.id || uid("player"),
-    name: p.name || "Unknown Player",
-    role: p.role || "FLEX",
-    nationality: p.nationality || "ID",
-    age: Number(p.age || 18),
-    rating: Number(p.rating || 70),
-    potential: Number(p.potential || p.rating || 75),
-    salary: Number(p.salary || 5000000),
-
-    form: Number(p.form ?? 70),
-    morale: Number(p.morale ?? 75),
-    fitness: Number(p.fitness ?? 100),
-    fatigue: Number(p.fatigue ?? 0),
-
-    matchesPlayed: Number(p.matchesPlayed || 0),
-    wins: Number(p.wins || 0),
-    losses: Number(p.losses || 0),
-
-    mvp: Number(p.mvp || 0),
-    gameWins: Number(p.gameWins || 0),
-    gameLosses: Number(p.gameLosses || 0),
-
-    kills: Number(p.kills || 0),
-    deaths: Number(p.deaths || 0),
-    assists: Number(p.assists || 0),
-
-    injured: Boolean(p.injured),
-    injuryUntil: p.injuryUntil || null,
-
-    contractUntil:
-      p.contractUntil ||
-      `${game ? game.year : 2026}-12-31`,
-
-    marketValue:
-      Number(p.marketValue) ||
-      Math.round(Number(p.rating || 70) * 1000000),
-
-    contractDemand:
-      Number(p.contractDemand) ||
-      Number(p.salary || 5000000),
-
-    status: p.status || "active",
-    formerTeam: p.formerTeam || null,
-    teamId: teamId || p.teamId || null
-  };
-}
-
-function normalizeTeam(team, leagueId) {
-  const t = team || {};
-
-  const roster = (t.players || []).map(p =>
-    normalizePlayer(p, t.id)
-  );
-
-  return {
-    id: t.id,
-    name: t.name,
-
-    leagueId,
-
-    players: roster,
-
-    startingFive:
-      Array.isArray(t.startingFive)
-        ? t.startingFive
-        : roster.slice(0, 5).map(p => p.id),
-
-    budget:
-      Number(t.budget) ||
-      rand(250, 700) * 1000000,
-
-    chemistry:
-      Number(t.chemistry ?? 70),
-
-    manager:
-      t.manager || {
-        name: pick([
-          "Raven",
-          "Kairo",
-          "Nova",
-          "Axel",
-          "Vega",
-          "Rex",
-          "Dante",
-          "Argo"
-        ]),
-        style: pick([
-          "aggressive",
-          "balanced",
-          "strategic",
-          "defensive"
-        ]),
-        ambition: rand(55, 95),
-        transferAggression: rand(40, 90)
-      },
-
-    standings: {
-      played: Number(t.standings?.played || 0),
-      wins: Number(t.standings?.wins || 0),
-      losses: Number(t.standings?.losses || 0),
-      gameWins: Number(t.standings?.gameWins || 0),
-      gameLosses: Number(t.standings?.gameLosses || 0),
-      points: Number(t.standings?.points || 0)
-    },
-
-    seasonStats: t.seasonStats || {
-      wins: 0,
-      losses: 0,
-      kills: 0,
-      deaths: 0,
-      assists: 0,
-      mvp: 0
-    },
-
-    contractsProcessed: Boolean(t.contractsProcessed)
-  };
-}
 
 /* =========================================================
-   GAME DEFAULT
+   PLAYER
    ========================================================= */
 
-function createDefaultGame() {
-  return {
-    version: 13,
+function createPlayer(data = {}) {
 
-    managerName: "",
+  const rating = Number(data.rating || rand(70, 84));
+
+  return {
+
+    id: data.id || uid("player"),
+
+    globalId: data.globalId || uid("global"),
+
+    name: data.name || "Unknown Player",
+
+    role: normalizeRole(data.role),
+
+    nationality: data.nationality || "ID",
+
+    age: Number(data.age || rand(18, 25)),
+
+    rating,
+
+    potential: Number(
+      data.potential || clamp(rating + rand(3, 10), rating, 99)
+    ),
+
+    salary: Number(
+      data.salary || rating * 100000
+    ),
+
+    marketValue: Number(
+      data.marketValue || rating * rating * 10000
+    ),
+
+    contractUntil:
+      data.contractUntil ||
+      String((game?.year || 2026) + 2),
+
+    morale: Number(data.morale ?? 75),
+
+    form: Number(data.form ?? 75),
+
+    fitness: Number(data.fitness ?? 95),
+
+    fatigue: Number(data.fatigue ?? 5),
+
+    stats: {
+
+      matches: Number(data.stats?.matches || 0),
+
+      wins: Number(data.stats?.wins || 0),
+
+      losses: Number(data.stats?.losses || 0),
+
+      kills: Number(data.stats?.kills || 0),
+
+      deaths: Number(data.stats?.deaths || 0),
+
+      assists: Number(data.stats?.assists || 0),
+
+      mvp: Number(data.stats?.mvp || 0)
+
+    },
+
+    injury: data.injury || null,
+
+    status: data.status || "active"
+
+  };
+
+}
+
+
+/* =========================================================
+   TEAM
+   ========================================================= */
+
+function createTeam(source) {
+
+  const team = clone(source);
+
+  team.players = (team.players || []).map(p =>
+    createPlayer({
+      ...p,
+      salary: p.salary || Number(p.rating) * 100000,
+      marketValue:
+        p.marketValue ||
+        Number(p.rating) * Number(p.rating) * 10000
+    })
+  );
+
+  team.players.forEach((p, index) => {
+
+    p.id = uid(team.id + "_p");
+
+    p.globalId = team.id + "_" + index + "_" + p.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+  });
+
+  team.budget = 500000000;
+
+  team.chemistry = 75;
+
+  team.manager = {
+    name: "AI Manager",
+    reputation: rand(60, 80)
+  };
+
+  team.sponsor = {
+    name: "Main Sponsor",
+    income: rand(50000000, 100000000)
+  };
+
+  team.standings = {
+    played: 0,
+    wins: 0,
+    losses: 0,
+    points: 0,
+    gameWins: 0,
+    gameLosses: 0
+  };
+
+  team.seasonStats = {
+    matches: 0,
+    wins: 0,
+    losses: 0
+  };
+
+  return team;
+
+}
+
+
+/* =========================================================
+   GAME CREATION
+   ========================================================= */
+
+function createGame() {
+
+  return {
+
+    version: "1.5",
+
     year: 2026,
-    date: "2026-01-05",
+
+    date: "2026-01-01",
 
     phase: "regular",
 
-    selectedCountry: null,
-    selectedLeague: null,
-    selectedTeam: null,
+    target: selectedTarget,
 
-    target: "top3",
+    countryId: selectedCountry?.id || "ID",
 
-    budget: 500000000,
-    reputation: 50,
-    organizationLevel: 1,
+    leagueId: selectedLeagueId,
 
-    chemistry: 70,
+    teamId: selectedTeamId,
 
     team: null,
 
     teams: [],
 
+    budget: 0,
+
+    reputation: 50,
+
+    organizationLevel: 1,
+
+    chemistry: 75,
+
     schedule: [],
+
     currentMatch: null,
 
     freeAgents: [],
@@ -283,3807 +337,2003 @@ function createDefaultGame() {
 
     awards: [],
 
-    seasonStats: {
-      matches: 0,
-      wins: 0,
-      losses: 0,
-      playerStats: {},
-      teamStats: {}
-    },
-
-    rivals: {},
+    rivals: [],
 
     worldRanking: [],
 
-    aiManagers: [],
+    tournaments: [],
 
-    msc: {
-      status: "Not Qualified"
-    },
+    seasonStats: {
 
-    mSeries: {
-      status: "Not Qualified"
-    },
+      matches: 0,
 
-    sponsor: {
-      name: "Local Sponsor",
-      monthlyIncome: 25000000,
-      bonus: 0
-    },
+      wins: 0,
 
-    settings: {
-      sound: true
+      losses: 0
+
     }
+
   };
+
 }
+
 
 /* =========================================================
-   TEAM INITIALIZATION
+   TEAM LOOKUPS
    ========================================================= */
 
-function buildLeagueTeams(league) {
-  if (!league) return [];
+function getUserTeam() {
 
-  return league.teams.map(raw =>
-    normalizeTeam(clone(raw), league.id)
-  );
+  if (!game) return null;
+
+  return game.teams.find(t => t.id === game.teamId) || game.team;
+
 }
 
-function initializeAIManagers() {
-  game.aiManagers = game.teams.map(team => ({
-    teamId: team.id,
-    name: team.manager?.name || "AI Manager",
-    style: team.manager?.style || "balanced",
-    ambition: team.manager?.ambition || rand(60, 90),
-    transferAggression:
-      team.manager?.transferAggression || rand(40, 85)
-  }));
+function getTeam(id) {
+
+  if (!game) return null;
+
+  return game.teams.find(t => t.id === id) || null;
+
 }
 
-function initializeTeamBudgets() {
-  game.teams.forEach(team => {
-    if (!team.budget || team.budget < 1000000) {
-      team.budget = rand(250, 700) * 1000000;
-    }
-  });
+function getPlayer(team, id) {
 
-  if (game.team) {
-    const realTeam = game.teams.find(
-      t => t.id === game.team.id
-    );
-
-    if (realTeam) {
-      game.budget = realTeam.budget;
-    }
-  }
-}
-
-/* =========================================================
-   FREE AGENTS
-   ========================================================= */
-
-function initializeFreeAgents() {
-  if (!Array.isArray(game.freeAgents)) {
-    game.freeAgents = [];
-  }
-
-  if (game.freeAgents.length >= 8) return;
-
-  const pool = [];
-
-  game.teams.forEach(team => {
-    team.players.forEach(player => {
-      if (player.status === "free_agent") {
-        pool.push(player);
-      }
-    });
-  });
-
-  game.freeAgents.push(...pool);
-
-  while (game.freeAgents.length < 8) {
-    const role = pick([
-      "EXP",
-      "JUNGLE",
-      "MID",
-      "GOLD",
-      "ROAM"
-    ]);
-
-    game.freeAgents.push(
-      normalizePlayer({
-        id: uid("fa"),
-        name: pick([
-          "Raptor",
-          "Miko",
-          "Zane",
-          "Frost",
-          "Keen",
-          "Nero",
-          "Blaze",
-          "Echo",
-          "Ryu",
-          "Kai"
-        ]),
-        role,
-        nationality: pick(["ID", "PH", "KH"]),
-        age: rand(17, 24),
-        rating: rand(68, 82),
-        potential: rand(78, 92),
-        salary: rand(5, 15) * 1000000,
-        form: rand(65, 80),
-        morale: rand(65, 85),
-        fitness: 100,
-        fatigue: 0,
-        contractUntil: `${game.year}-12-31`,
-        marketValue: rand(70, 150) * 1000000,
-        status: "free_agent"
-      })
-    );
-  }
-}
-
-/* =========================================================
-   ROSTER HELPERS
-   ========================================================= */
-
-function getPlayer(team, playerId) {
   if (!team) return null;
 
-  return team.players.find(p => p.id === playerId) || null;
-}
-
-function getStartingPlayers(team) {
-  if (!team) return [];
-
-  const result = team.startingFive
-    .map(id => getPlayer(team, id))
-    .filter(Boolean);
-
-  return result;
-}
-
-function roleCoverage(players) {
-  const wanted = ["EXP", "JUNGLE", "MID", "GOLD", "ROAM"];
-
-  let score = 100;
-
-  wanted.forEach(role => {
-    if (!players.some(p => p.role === role)) {
-      score -= 12;
-    }
-  });
-
-  const roles = players.map(p => p.role);
-
-  const duplicatePenalty =
-    roles.length - new Set(roles).size;
-
-  score -= duplicatePenalty * 5;
-
-  return clamp(score, 40, 100);
-}
-
-function calculateTeamPower(team) {
-  if (!team) return 0;
-
-  const players = getStartingPlayers(team);
-
-  if (!players.length) return 50;
-
-  const playerPower = avg(
-    players.map(p => {
-      const formBonus = (p.form - 70) * 0.18;
-      const fitnessPenalty = (100 - p.fitness) * 0.15;
-      const fatiguePenalty = p.fatigue * 0.10;
-
-      return p.rating +
-        formBonus -
-        fitnessPenalty -
-        fatiguePenalty;
-    })
+  return team.players.find(p =>
+    p.id === id ||
+    p.globalId === id
   );
 
-  const synergy = roleCoverage(players);
-
-  const chemistryBonus =
-    (team.chemistry - 70) * 0.15;
-
-  return clamp(
-    playerPower +
-      (synergy - 70) * 0.18 +
-      chemistryBonus,
-    40,
-    110
-  );
 }
+
+function syncUserTeam() {
+
+  if (!game) return;
+
+  const team = getUserTeam();
+
+  if (team) {
+
+    game.team = team;
+    game.budget = team.budget;
+
+  }
+
+}
+
 
 /* =========================================================
-   AI LINEUP
+   LINEUP
    ========================================================= */
 
-function chooseBestLineup(team) {
-  if (!team || !team.players.length) return;
+function playerLineupScore(player) {
 
-  const available = team.players.filter(p =>
-    p.status !== "free_agent" &&
-    !p.injured &&
-    p.fitness >= 35
+  if (!player) return 0;
+
+  return (
+
+    player.rating * 0.55 +
+
+    player.form * 0.15 +
+
+    player.fitness * 0.15 +
+
+    player.morale * 0.10 +
+
+    (100 - player.fatigue) * 0.05
+
   );
 
-  if (!available.length) return;
+}
 
-  const roles = [
-    "EXP",
-    "JUNGLE",
-    "MID",
-    "GOLD",
-    "ROAM"
-  ];
+
+function chooseBestLineup(team) {
+
+  if (!team) return [];
+
+  const available = team.players.filter(p =>
+    p.status !== "injured" &&
+    !p.injury
+  );
 
   const selected = [];
 
-  roles.forEach(role => {
+  for (const role of ROLE_ORDER) {
+
     const candidates = available
       .filter(p =>
-        p.role === role &&
+        normalizeRole(p.role) === role &&
         !selected.includes(p)
       )
-      .sort((a, b) =>
-        lineupScore(b) - lineupScore(a)
+      .sort(
+        (a, b) =>
+          playerLineupScore(b) -
+          playerLineupScore(a)
       );
 
     if (candidates[0]) {
       selected.push(candidates[0]);
     }
-  });
 
-  while (selected.length < 5) {
-    const candidates = available
+  }
+
+  // fallback kalau role tertentu kosong
+  if (selected.length < 5) {
+
+    const remaining = available
       .filter(p => !selected.includes(p))
-      .sort((a, b) =>
-        lineupScore(b) - lineupScore(a)
+      .sort(
+        (a, b) =>
+          playerLineupScore(b) -
+          playerLineupScore(a)
       );
 
-    if (!candidates.length) break;
+    while (
+      selected.length < 5 &&
+      remaining.length
+    ) {
 
-    selected.push(candidates[0]);
-  }
+      selected.push(remaining.shift());
 
-  team.startingFive = selected
-    .slice(0, 5)
-    .map(p => p.id);
-}
-
-function lineupScore(player) {
-  return (
-    player.rating +
-    player.form * 0.20 +
-    player.fitness * 0.10 -
-    player.fatigue * 0.15 +
-    player.morale * 0.05 +
-    randFloat(-2, 2)
-  );
-}
-
-function chooseAllAILineups() {
-  game.teams.forEach(team => {
-    if (team.id !== game.team?.id) {
-      chooseBestLineup(team);
     }
-  });
+
+  }
+
+  return selected.slice(0, 5);
+
 }
 
-/* =========================================================
-   PLAYER FORM
-   ========================================================= */
 
-function updatePlayerForm(player, played = false, won = false) {
-  if (!player) return;
+function getStartingPlayers(team) {
 
-  let change = randFloat(-2.5, 2.5);
+  if (!team) return [];
 
-  if (played) {
-    change += won ? randFloat(0.5, 2) : randFloat(-1.5, 0.5);
+  let lineup = [];
+
+  if (
+    Array.isArray(team.lineup) &&
+    team.lineup.length
+  ) {
+
+    lineup = team.lineup
+      .map(id => getPlayer(team, id))
+      .filter(Boolean)
+      .filter(p => p.status !== "injured");
+
   }
 
-  if (player.morale >= 85) {
-    change += 0.5;
+  if (lineup.length < 5) {
+
+    lineup = chooseBestLineup(team);
+
   }
 
-  if (player.fatigue >= 70) {
-    change -= 1.5;
-  }
+  return lineup.slice(0, 5);
 
-  if (player.injured) {
-    change -= 2;
-  }
+}
 
-  player.form = clamp(
-    player.form + change,
-    40,
+
+function autoLineup() {
+
+  const team = getUserTeam();
+
+  if (!team) return;
+
+  const lineup = chooseBestLineup(team);
+
+  team.lineup = lineup.map(p => p.id);
+
+  team.chemistry = clamp(
+    Number(team.chemistry || 70) + 3,
+    0,
     100
   );
 
-  if (won) {
-    player.morale = clamp(
-      player.morale + randFloat(0.5, 2),
-      30,
-      100
-    );
-  } else if (played) {
-    player.morale = clamp(
-      player.morale - randFloat(0, 1.5),
-      30,
-      100
-    );
-  }
+  addNews(
+    "? Lineup",
+    "Best lineup otomatis telah dipilih."
+  );
+
+  saveGame();
+
+  renderRoster("starting");
+
 }
 
-function updateAllPlayerForms() {
-  game.teams.forEach(team => {
-    team.players.forEach(player => {
-      updatePlayerForm(player);
-    });
-  });
-}
 
 /* =========================================================
-   FITNESS / FATIGUE / INJURY
+   TEAM POWER
    ========================================================= */
 
-function recoverPlayers() {
-  game.teams.forEach(team => {
-    team.players.forEach(player => {
-      if (player.injured) {
-        if (
-          player.injuryUntil &&
-          game.date >= player.injuryUntil
-        ) {
-          player.injured = false;
-          player.injuryUntil = null;
-          player.fitness = 70;
-          player.fatigue = 20;
+function teamPower(team) {
 
-          addNews(
-            `${player.name} telah pulih dari cedera.`
-          );
-        }
-      } else {
-        player.fatigue = clamp(
-          player.fatigue - rand(5, 12),
-          0,
-          100
-        );
+  if (!team) return 0;
 
-        player.fitness = clamp(
-          player.fitness + rand(3, 8),
-          40,
-          100
-        );
-      }
-    });
-  });
+  const lineup = getStartingPlayers(team);
+
+  if (!lineup.length) return 50;
+
+  const avg =
+    lineup.reduce(
+      (sum, p) => sum + playerLineupScore(p),
+      0
+    ) / lineup.length;
+
+  const chemistry =
+    Number(team.chemistry || 70);
+
+  const manager =
+    Number(team.manager?.reputation || 60);
+
+  return (
+
+    avg * 0.72 +
+
+    chemistry * 0.15 +
+
+    manager * 0.08 +
+
+    randFloat(-2, 2)
+
+  );
+
 }
 
-function applyMatchFatigue(team) {
-  if (!team) return;
+function randFloat(min, max) {
+  return Math.random() * (max - min) + min;
+}
 
-  getStartingPlayers(team).forEach(player => {
+
+/* =========================================================
+   WORLD RANKING
+   ========================================================= */
+
+function updateWorldRanking() {
+
+  if (!game) return;
+
+  const ranking = game.teams.map(team => {
+
+    const points =
+      teamPower(team) * 10 +
+      (team.standings?.points || 0) * 5 +
+      rand(0, 80);
+
+    return {
+
+      teamId: team.id,
+
+      teamName: team.name,
+
+      region: game.leagueId,
+
+      power: Math.round(teamPower(team)),
+
+      points: Math.round(points)
+
+    };
+
+  });
+
+  ranking.sort(
+    (a, b) => b.points - a.points
+  );
+
+  ranking.forEach((r, index) => {
+    r.rank = index + 1;
+  });
+
+  game.worldRanking = ranking;
+
+}
+
+
+/* =========================================================
+   RIVALRY
+   ========================================================= */
+
+function initRivals() {
+
+  const user = getUserTeam();
+
+  if (!user) return;
+
+  game.rivals = game.teams
+    .filter(t => t.id !== user.id)
+    .sort(
+      (a, b) =>
+        teamPower(b) - teamPower(a)
+    )
+    .slice(0, 3)
+    .map(t => ({
+
+      teamId: t.id,
+
+      intensity: rand(50, 85)
+
+    }));
+
+}
+
+
+/* =========================================================
+   FREE AGENTS
+   ========================================================= */
+
+function generateFreeAgent() {
+
+  const roles = ROLE_ORDER;
+
+  const role =
+    roles[rand(0, roles.length - 1)];
+
+  const rating = rand(70, 86);
+
+  return createPlayer({
+
+    name:
+      [
+        "Raven",
+        "Shadow",
+        "Nova",
+        "Blaze",
+        "Zero",
+        "Storm",
+        "Viper",
+        "Ace",
+        "Ghost",
+        "Frost"
+      ][rand(0, 9)] +
+      " " +
+      rand(10, 99),
+
+    role,
+
+    rating,
+
+    potential: clamp(
+      rating + rand(3, 12),
+      rating,
+      99
+    ),
+
+    nationality: game?.countryId || "ID",
+
+    age: rand(18, 24),
+
+    salary: rating * 90000,
+
+    marketValue:
+      rating * rating * 8000,
+
+    contractUntil:
+      String((game?.year || 2026) + 1)
+
+  });
+
+}
+
+
+function initFreeAgents() {
+
+  game.freeAgents = [];
+
+  for (let i = 0; i < 15; i++) {
+
+    game.freeAgents.push(
+      generateFreeAgent()
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   SCHEDULE
+   ========================================================= */
+
+function createSeasonSchedule() {
+
+  const teams = game.teams;
+
+  const matches = [];
+
+  let date = "2026-02-01";
+
+  let round = 1;
+
+  // double round robin
+  for (let i = 0; i < teams.length; i++) {
+
+    for (let j = i + 1; j < teams.length; j++) {
+
+      const home = teams[i];
+      const away = teams[j];
+
+      matches.push({
+
+        id: uid("match"),
+
+        date,
+
+        round,
+
+        type: "regular",
+
+        bestOf: 3,
+
+        homeId: home.id,
+
+        awayId: away.id,
+
+        played: false,
+
+        result: null
+
+      });
+
+      date = addDays(date, 2);
+
+      matches.push({
+
+        id: uid("match"),
+
+        date,
+
+        round: round + 100,
+
+        type: "regular",
+
+        bestOf: 3,
+
+        homeId: away.id,
+
+        awayId: home.id,
+
+        played: false,
+
+        result: null
+
+      });
+
+      date = addDays(date, 2);
+
+      round++;
+
+    }
+
+  }
+
+  matches.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date)
+  );
+
+  game.schedule = matches;
+
+}
+
+
+/* =========================================================
+   STANDINGS
+   ========================================================= */
+
+function resetStandings() {
+
+  game.teams.forEach(team => {
+
+    team.standings = {
+
+      played: 0,
+
+      wins: 0,
+
+      losses: 0,
+
+      points: 0,
+
+      gameWins: 0,
+
+      gameLosses: 0
+
+    };
+
+  });
+
+}
+
+
+function updateStandings(
+  winner,
+  loser,
+  winnerGames,
+  loserGames
+) {
+
+  winner.standings.played++;
+  loser.standings.played++;
+
+  winner.standings.wins++;
+  loser.standings.losses++;
+
+  winner.standings.points += 3;
+
+  winner.standings.gameWins += winnerGames;
+  winner.standings.gameLosses += loserGames;
+
+  loser.standings.gameWins += loserGames;
+  loser.standings.gameLosses += winnerGames;
+
+}
+
+
+/* =========================================================
+   MATCH ENGINE
+   ========================================================= */
+
+function calculateWinChance(teamA, teamB) {
+
+  const powerA = teamPower(teamA);
+  const powerB = teamPower(teamB);
+
+  const diff = powerA - powerB;
+
+  return clamp(
+    50 + diff * 1.4,
+    12,
+    88
+  );
+
+}
+
+
+function simulateSeries(
+  teamA,
+  teamB,
+  bestOf = 3
+) {
+
+  const needed = Math.ceil(bestOf / 2);
+
+  let a = 0;
+  let b = 0;
+
+  while (a < needed && b < needed) {
+
+    const chanceA =
+      calculateWinChance(teamA, teamB);
+
+    if (chance(chanceA)) {
+      a++;
+    } else {
+      b++;
+    }
+
+  }
+
+  return {
+
+    winner:
+      a > b ? teamA.id : teamB.id,
+
+    loser:
+      a > b ? teamB.id : teamA.id,
+
+    scoreA: a,
+
+    scoreB: b
+
+  };
+
+}
+
+
+/* =========================================================
+   PLAYER MATCH STATS
+   ========================================================= */
+
+function updatePlayerStats(
+  team,
+  won,
+  seriesScore
+) {
+
+  const lineup =
+    getStartingPlayers(team);
+
+  lineup.forEach(player => {
+
+    player.stats.matches++;
+
+    if (won) {
+      player.stats.wins++;
+    } else {
+      player.stats.losses++;
+    }
+
+    const kills =
+      rand(
+        Math.max(1, Math.round(player.rating / 15)),
+        Math.max(3, Math.round(player.rating / 7))
+      );
+
+    const deaths = rand(0, 6);
+
+    const assists =
+      rand(3, 15);
+
+    player.stats.kills += kills;
+
+    player.stats.deaths += deaths;
+
+    player.stats.assists += assists;
+
     player.fatigue = clamp(
-      player.fatigue + rand(12, 25),
+      player.fatigue + rand(8, 18),
       0,
       100
     );
 
     player.fitness = clamp(
       player.fitness - rand(5, 12),
-      25,
+      0,
       100
     );
-  });
-}
 
-function checkInjuries(team) {
-  if (!team) return;
+    if (won) {
 
-  team.players.forEach(player => {
-    if (
-      !player.injured &&
-      player.fitness < 45 &&
-      chance(4)
-    ) {
-      const days = rand(3, 18);
-
-      player.injured = true;
-      player.injuryUntil =
-        addDays(game.date, days);
-
-      addNews(
-        `🩹 ${player.name} (${team.name}) mengalami cedera dan absen ${days} hari.`
+      player.form = clamp(
+        player.form + rand(1, 5),
+        0,
+        100
       );
+
+      player.morale = clamp(
+        player.morale + rand(2, 5),
+        0,
+        100
+      );
+
+    } else {
+
+      player.form = clamp(
+        player.form - rand(1, 4),
+        0,
+        100
+      );
+
+      player.morale = clamp(
+        player.morale - rand(1, 4),
+        0,
+        100
+      );
+
     }
+
+    // injury
+    if (
+      chance(4) &&
+      !player.injury
+    ) {
+
+      const major = chance(15);
+
+      player.injury = {
+
+        type:
+          major
+            ? "Major Injury"
+            : "Minor Injury",
+
+        days:
+          major
+            ? rand(10, 30)
+            : rand(2, 7)
+
+      };
+
+      player.status = "injured";
+
+    }
+
   });
+
 }
+
 
 /* =========================================================
-   RIVALRY
+   MVP
    ========================================================= */
 
-function rivalryKey(a, b) {
-  return [a, b].sort().join("__");
-}
+function calculateMVP(team) {
 
-function getRivalry(a, b) {
-  if (!game.rivals) game.rivals = {};
+  const lineup =
+    getStartingPlayers(team);
 
-  const key = rivalryKey(a, b);
+  if (!lineup.length) return null;
 
-  if (!game.rivals[key]) {
-    game.rivals[key] = {
-      teamA: a,
-      teamB: b,
-      intensity: 0,
-      matches: 0,
-      transfers: 0
-    };
+  const sorted = [...lineup].sort(
+    (a, b) =>
+      (
+        playerLineupScore(b) +
+        b.stats.assists * 0.1
+      ) -
+      (
+        playerLineupScore(a) +
+        a.stats.assists * 0.1
+      )
+  );
+
+  const mvp = sorted[0];
+
+  if (mvp) {
+    mvp.stats.mvp++;
   }
 
-  return game.rivals[key];
+  return mvp;
+
 }
 
-function updateRivalry(home, away, reason = "match") {
-  const rivalry = getRivalry(home.id, away.id);
 
-  rivalry.matches++;
+/* =========================================================
+   MATCH SIMULATION
+   ========================================================= */
 
-  if (reason === "transfer") {
-    rivalry.transfers++;
-    rivalry.intensity += 10;
+function simulateMatch(match) {
+
+  const home =
+    getTeam(match.homeId);
+
+  const away =
+    getTeam(match.awayId);
+
+  if (!home || !away) return null;
+
+  const result =
+    simulateSeries(
+      home,
+      away,
+      match.bestOf
+    );
+
+  const winner =
+    getTeam(result.winner);
+
+  const loser =
+    getTeam(result.loser);
+
+  updateStandings(
+    winner,
+    loser,
+    result.winner === home.id
+      ? result.scoreA
+      : result.scoreB,
+    result.winner === home.id
+      ? result.scoreB
+      : result.scoreA
+  );
+
+  updatePlayerStats(
+    home,
+    winner.id === home.id,
+    result
+  );
+
+  updatePlayerStats(
+    away,
+    winner.id === away.id,
+    result
+  );
+
+  const mvp =
+    calculateMVP(winner);
+
+  match.played = true;
+
+  match.result = {
+
+    winnerId: winner.id,
+
+    loserId: loser.id,
+
+    homeScore: result.scoreA,
+
+    awayScore: result.scoreB,
+
+    mvpId: mvp?.id || null
+
+  };
+
+  home.seasonStats.matches++;
+  away.seasonStats.matches++;
+
+  if (winner.id === home.id) {
+    home.seasonStats.wins++;
+    away.seasonStats.losses++;
   } else {
-    rivalry.intensity += 3;
+    away.seasonStats.wins++;
+    home.seasonStats.losses++;
   }
 
-  rivalry.intensity =
-    clamp(rivalry.intensity, 0, 100);
+  return match.result;
 
-  return rivalry;
 }
 
-function rivalryBonus(home, away) {
-  const rivalry = getRivalry(home.id, away.id);
-
-  return rivalry.intensity * 0.04;
-}
 
 /* =========================================================
-   WORLD RANKING
+   AI MATCHES
    ========================================================= */
 
-function initializeWorldRanking() {
-  game.worldRanking = [];
+function simulateAIMatches() {
 
-  game.teams.forEach(team => {
-    game.worldRanking.push({
-      teamId: team.id,
-      teamName: team.name,
-      leagueId: team.leagueId,
-      points: 1000,
-      wins: 0,
-      losses: 0,
-      international: 0
-    });
-  });
-
-  sortWorldRanking();
-}
-
-function getWorldEntry(teamId) {
-  return game.worldRanking.find(
-    x => x.teamId === teamId
-  );
-}
-
-function updateWorldRankingMatch(
-  winner,
-  loser,
-  international = false
-) {
-  const w = getWorldEntry(winner.id);
-  const l = getWorldEntry(loser.id);
-
-  if (!w || !l) return;
-
-  w.wins++;
-  l.losses++;
-
-  w.points += international ? 35 : 12;
-  l.points -= international ? 15 : 4;
-
-  if (international) {
-    w.international += 1;
-  }
-
-  w.points = Math.max(500, w.points);
-  l.points = Math.max(500, l.points);
-
-  sortWorldRanking();
-}
-
-function sortWorldRanking() {
-  game.worldRanking.sort(
-    (a, b) => b.points - a.points
-  );
-}
-
-/* =========================================================
-   NEWS / INBOX
-   ========================================================= */
-
-function addNews(message) {
   if (!game) return;
 
-  game.news.unshift({
-    id: uid("news"),
-    date: game.date,
-    message
-  });
+  const userId = game.teamId;
 
-  game.news = game.news.slice(0, 50);
-}
-
-function addInbox(title, message) {
-  game.inbox.unshift({
-    id: uid("mail"),
-    date: game.date,
-    title,
-    message,
-    read: false
-  });
-
-  game.inbox = game.inbox.slice(0, 50);
-}
-
-/* =========================================================
-   AI TRANSFER SYSTEM
-   ========================================================= */
-
-function transferWindowOpen() {
-  const month = monthOf(game.date);
-
-  return (
-    month === 1 ||
-    month === 7 ||
-    month === 8
-  );
-}
-
-function getAIManager(team) {
-  return game.aiManagers.find(
-    m => m.teamId === team.id
-  );
-}
-
-function teamNeedsRole(team) {
-  const players = team.players;
-
-  const roles = {
-    EXP: 0,
-    JUNGLE: 0,
-    MID: 0,
-    GOLD: 0,
-    ROAM: 0
-  };
-
-  players.forEach(p => {
-    if (roles[p.role] !== undefined) {
-      roles[p.role]++;
-    }
-  });
-
-  const missing = Object.keys(roles)
-    .filter(role => roles[role] === 0);
-
-  return missing.length
-    ? pick(missing)
-    : null;
-}
-
-function findBestFreeAgent(role, maxRating = 100) {
-  return game.freeAgents
-    .filter(p =>
-      (!role || p.role === role) &&
-      p.rating <= maxRating
+  game.schedule
+    .filter(m =>
+      !m.played &&
+      m.type === "regular" &&
+      m.date <= game.date &&
+      m.homeId !== userId &&
+      m.awayId !== userId
     )
-    .sort(
-      (a, b) =>
-        lineupScore(b) - lineupScore(a)
-    )[0] || null;
+    .forEach(match => {
+
+      simulateMatch(match);
+
+    });
+
 }
 
-function aiSignFreeAgent(team) {
-  if (!team || team.id === game.team?.id) return;
 
-  const manager = getAIManager(team);
+/* =========================================================
+   PLAY NEXT MATCH
+   ========================================================= */
 
-  if (!manager) return;
+function findNextUserMatch() {
 
-  if (
-    team.budget < 50000000 ||
-    !chance(manager.transferAggression * 0.35)
-  ) {
-    return;
-  }
+  if (!game) return null;
 
-  const need = teamNeedsRole(team);
-
-  const player = findBestFreeAgent(
-    need,
-    100
-  );
-
-  if (!player) return;
-
-  const signingBonus =
-    Math.max(
-      5000000,
-      player.marketValue * 0.08
-    );
-
-  const totalCost =
-    signingBonus + player.salary;
-
-  if (team.budget < totalCost) return;
-
-  team.budget -= signingBonus;
-
-  player.status = "active";
-  player.teamId = team.id;
-  player.formerTeam = "Free Agent";
-
-  team.players.push(player);
-
-  game.freeAgents =
-    game.freeAgents.filter(
-      p => p.id !== player.id
-    );
-
-  chooseBestLineup(team);
-
-  addNews(
-    `🔄 ${team.name} merekrut ${player.name} dari Free Agent.`
-  );
-}
-
-function aiReleasePlayer(team) {
-  if (!team || team.id === game.team?.id) return;
-
-  const manager = getAIManager(team);
-
-  if (!manager) return;
-
-  const candidates = team.players
-    .filter(p =>
-      p.status === "active" &&
-      p.rating < 68 &&
-      !team.startingFive.includes(p.id)
+  return game.schedule.find(m =>
+    !m.played &&
+    (
+      m.homeId === game.teamId ||
+      m.awayId === game.teamId
     )
-    .sort((a, b) => a.rating - b.rating);
+  ) || null;
 
-  if (!candidates.length) return;
-
-  if (!chance(15)) return;
-
-  const player = candidates[0];
-
-  team.players =
-    team.players.filter(
-      p => p.id !== player.id
-    );
-
-  player.status = "free_agent";
-  player.teamId = null;
-  player.formerTeam = team.name;
-
-  game.freeAgents.push(player);
-
-  addNews(
-    `📤 ${team.name} melepas ${player.name} ke Free Agent.`
-  );
 }
 
-function processAITransfers() {
-  if (!transferWindowOpen()) return;
 
-  game.teams.forEach(team => {
-    if (team.id === game.team?.id) return;
+function ensureMatchDay() {
 
-    aiReleasePlayer(team);
-    aiSignFreeAgent(team);
-  });
+  const match =
+    findNextUserMatch();
+
+  if (!match) return;
+
+  game.date = match.date;
+
+  simulateAIMatches();
+
 }
+
 
 /* =========================================================
-   AI CONTRACTS
+   PLAY MATCH SCREEN
    ========================================================= */
 
-function contractEndingThisSeason(player) {
-  if (!player.contractUntil) return false;
+function openMatch(match) {
 
-  return (
-    yearOf(player.contractUntil) <= game.year
-  );
+  const home =
+    getTeam(match.homeId);
+
+  const away =
+    getTeam(match.awayId);
+
+  if (!home || !away) return;
+
+  currentMatch = match;
+
+  document.getElementById(
+    "matchLeague"
+  ).textContent =
+    match.type === "regular"
+      ? "REGULAR SEASON"
+      : "PLAYOFF";
+
+  document.getElementById(
+    "matchDate"
+  ).textContent =
+    formatDate(match.date);
+
+  document.getElementById(
+    "homeTeamName"
+  ).textContent =
+    home.name;
+
+  document.getElementById(
+    "awayTeamName"
+  ).textContent =
+    away.name;
+
+  document.getElementById(
+    "matchSeries"
+  ).textContent =
+    "BO" + match.bestOf;
+
+  renderMatchLineup();
+
+  showScreen("matchScreen");
+
 }
 
-function aiRenewContracts() {
-  game.teams.forEach(team => {
-    if (team.id === game.team?.id) return;
 
-    const manager = getAIManager(team);
-
-    if (!manager) return;
-
-    team.players.forEach(player => {
-      if (!contractEndingThisSeason(player)) return;
-
-      const important =
-        team.startingFive.includes(player.id) ||
-        player.rating >= 78;
-
-      if (
-        important &&
-        team.budget >= player.salary * 2
-      ) {
-        player.contractUntil =
-          `${game.year + 1}-12-31`;
-
-        player.salary = Math.round(
-          player.salary *
-          randFloat(1.03, 1.12)
-        );
-
-        addNews(
-          `📝 ${team.name} memperpanjang kontrak ${player.name}.`
-        );
-      }
-    });
-  });
-}
-
-/* =========================================================
-   USER FREE AGENT SIGNING
-   ========================================================= */
-
-function signFreeAgent(playerId) {
-  const player = game.freeAgents.find(
-    p => p.id === playerId
-  );
-
-  if (!player) return;
-
-  if (!transferWindowOpen()) {
-    alert("Free Agent hanya bisa direkrut saat transfer window.");
-    return;
-  }
-
-  const signingBonus =
-    Math.max(
-      5000000,
-      player.marketValue * 0.08
-    );
-
-  if (game.budget < signingBonus) {
-    alert("Budget tidak cukup untuk signing bonus.");
-    return;
-  }
-
-  game.budget -= signingBonus;
-
-  player.status = "active";
-  player.teamId = game.team.id;
-  player.contractUntil =
-    `${game.year + 1}-12-31`;
-
-  game.team.players.push(player);
-
-  game.freeAgents =
-    game.freeAgents.filter(
-      p => p.id !== player.id
-    );
-
-  chooseBestLineup(game.team);
-
-  addNews(
-    `🆕 Kamu merekrut ${player.name} sebagai Free Agent.`
-  );
-
-  saveGame(false);
-
-  if (typeof openFreeAgents === "function") {
-    openFreeAgents();
-  }
-}
-
-/* =========================================================
-   TRANSFER NEGOTIATION
-   ========================================================= */
-
-function createTransferOffer(teamId, playerId, fee) {
-  const sellingTeam = game.teams.find(
-    t => t.id === teamId
-  );
-
-  if (!sellingTeam) return;
-
-  const player = getPlayer(
-    sellingTeam,
-    playerId
-  );
-
-  if (!player) return;
-
-  if (!transferWindowOpen()) {
-    alert("Transfer window sedang tutup.");
-    return;
-  }
-
-  fee = Number(fee);
-
-  if (!fee || fee <= 0) {
-    alert("Masukkan nilai transfer.");
-    return;
-  }
-
-  if (game.budget < fee) {
-    alert("Budget kamu tidak cukup.");
-    return;
-  }
-
-  if (sellingTeam.id === game.team.id) {
-    alert("Pemain tersebut sudah berada di tim kamu.");
-    return;
-  }
-
-  const manager =
-    getAIManager(sellingTeam);
-
-  const value =
-    player.marketValue ||
-    player.rating * 1000000;
-
-  let acceptance =
-    (fee / value) * 60;
-
-  if (
-    sellingTeam.startingFive.includes(player.id)
-  ) {
-    acceptance -= 20;
-  }
-
-  if (player.rating >= 85) {
-    acceptance -= 10;
-  }
-
-  if (manager) {
-    acceptance +=
-      (manager.transferAggression - 50) * 0.15;
-  }
-
-  const rivalry =
-    getRivalry(
-      sellingTeam.id,
-      game.team.id
-    );
-
-  acceptance -= rivalry.intensity * 0.08;
-
-  const accepted =
-    acceptance >= rand(45, 75);
-
-  const offer = {
-    id: uid("offer"),
-    type: "transfer",
-    fromTeam: game.team.id,
-    toTeam: sellingTeam.id,
-    playerId: player.id,
-    playerName: player.name,
-    fee,
-    accepted,
-    date: game.date,
-    status: accepted ? "accepted" : "rejected"
-  };
-
-  game.transferOffers.unshift(offer);
-
-  if (accepted) {
-    addNews(
-      `🤝 ${sellingTeam.name} menerima tawaran ${money(fee)} untuk ${player.name}.`
-    );
-
-    addInbox(
-      "Transfer Diterima",
-      `${sellingTeam.name} menerima tawaran kamu untuk ${player.name} sebesar ${money(fee)}.`
-    );
-  } else {
-    addNews(
-      `❌ ${sellingTeam.name} menolak tawaran untuk ${player.name}.`
-    );
-
-    addInbox(
-      "Transfer Ditolak",
-      `${sellingTeam.name} menolak tawaran kamu untuk ${player.name}.`
-    );
-  }
-
-  saveGame(false);
-}
-
-/* =========================================================
-   COMPLETE TRANSFER
-   ========================================================= */
-
-function completeTransfer(offerId) {
-  const offer =
-    game.transferOffers.find(
-      o => o.id === offerId
-    );
-
-  if (!offer || offer.status !== "accepted") {
-    return;
-  }
-
-  const sellingTeam =
-    game.teams.find(
-      t => t.id === offer.toTeam
-    );
-
-  const buyingTeam =
-    game.teams.find(
-      t => t.id === offer.fromTeam
-    );
-
-  if (!sellingTeam || !buyingTeam) return;
-
-  const player =
-    getPlayer(
-      sellingTeam,
-      offer.playerId
-    );
-
-  if (!player) return;
-
-  if (buyingTeam.budget < offer.fee) {
-    alert("Budget tidak cukup untuk menyelesaikan transfer.");
-    return;
-  }
-
-  buyingTeam.budget -= offer.fee;
-  sellingTeam.budget += offer.fee;
-
-  sellingTeam.players =
-    sellingTeam.players.filter(
-      p => p.id !== player.id
-    );
-
-  player.teamId = buyingTeam.id;
-  player.status = "active";
-  player.formerTeam = sellingTeam.name;
-  player.contractUntil =
-    `${game.year + 2}-12-31`;
-
-  buyingTeam.players.push(player);
-
-  offer.status = "completed";
-
-  updateRivalry(
-    buyingTeam,
-    sellingTeam,
-    "transfer"
-  );
-
-  chooseBestLineup(buyingTeam);
-  chooseBestLineup(sellingTeam);
-
-  addNews(
-    `🚨 TRANSFER: ${player.name} pindah dari ${sellingTeam.name} ke ${buyingTeam.name} dengan biaya ${money(offer.fee)}.`
-  );
-
-  saveGame(false);
-
-  if (
-    typeof openOffers === "function"
-  ) {
-    openOffers();
-  }
-}
-
-/* =========================================================
-   SEASON DEVELOPMENT
-   ========================================================= */
-
-function developPlayer(player) {
-  if (!player) return;
-
-  const ageFactor =
-    player.age <= 21
-      ? 1.5
-      : player.age <= 24
-        ? 1
-        : player.age <= 27
-          ? 0.3
-          : -0.7;
-
-  const performance =
-    player.matchesPlayed > 0
-      ? (player.wins / player.matchesPlayed) * 2
-      : 0;
-
-  const formFactor =
-    (player.form - 70) * 0.05;
-
-  let change =
-    ageFactor +
-    performance +
-    formFactor +
-    randFloat(-1.5, 1.5);
-
-  if (
-    player.rating >= player.potential
-  ) {
-    change = Math.min(change, 0.5);
-  }
-
-  player.rating = clamp(
-    Math.round(
-      player.rating + change
-    ),
-    45,
-    player.potential
-  );
-
-  if (player.age >= 28 && chance(25)) {
-    player.rating = clamp(
-      player.rating - rand(1, 2),
-      45,
-      100
-    );
-  }
-
-  player.age++;
-
-  player.form = clamp(
-    65 + rand(-5, 10),
-    40,
-    100
-  );
-
-  player.fitness = 100;
-  player.fatigue = 0;
-}
-
-function developAllPlayers() {
-  game.teams.forEach(team => {
-    team.players.forEach(player => {
-      developPlayer(player);
-    });
-  });
-
-  game.freeAgents.forEach(player => {
-    developPlayer(player);
-  });
-}
-
-/* =========================================================
-   SEASON RESET
-   ========================================================= */
-
-function resetPlayerSeasonStats(player) {
-  player.matchesPlayed = 0;
-  player.wins = 0;
-  player.losses = 0;
-
-  player.mvp = 0;
-
-  player.gameWins = 0;
-  player.gameLosses = 0;
-
-  player.kills = 0;
-  player.deaths = 0;
-  player.assists = 0;
-
-  player.fatigue = 0;
-  player.fitness = 100;
-
-  player.injured = false;
-  player.injuryUntil = null;
-}
-
-function resetTeamSeasonStats(team) {
-  team.standings = {
-    played: 0,
-    wins: 0,
-    losses: 0,
-    gameWins: 0,
-    gameLosses: 0,
-    points: 0
-  };
-
-  team.seasonStats = {
-    wins: 0,
-    losses: 0,
-    kills: 0,
-    deaths: 0,
-    assists: 0,
-    mvp: 0
-  };
-
-  team.chemistry = clamp(
-    team.chemistry + rand(-4, 4),
-    50,
-    100
-  );
-
-  team.players.forEach(
-    resetPlayerSeasonStats
-  );
-
-  chooseBestLineup(team);
-}
-
-/* =========================================================
-   SAVE / LOAD
-   ========================================================= */
-
-function saveGame(showMessage = true) {
-  try {
-    localStorage.setItem(
-      SAVE_KEY,
-      JSON.stringify(game)
-    );
-
-    if (showMessage) {
-      alert("Game berhasil disimpan.");
-    }
-  } catch (error) {
-    console.error(error);
-    alert("Gagal menyimpan game.");
-  }
-}
-
-function migrateGame(oldGame) {
-  const fresh = createDefaultGame();
-
-  const migrated = {
-    ...fresh,
-    ...oldGame,
-    version: 13
-  };
-
-  migrated.freeAgents =
-    Array.isArray(oldGame.freeAgents)
-      ? oldGame.freeAgents
-      : [];
-
-  migrated.transferOffers =
-    Array.isArray(oldGame.transferOffers)
-      ? oldGame.transferOffers
-      : [];
-
-  migrated.inbox =
-    Array.isArray(oldGame.inbox)
-      ? oldGame.inbox
-      : [];
-
-  migrated.news =
-    Array.isArray(oldGame.news)
-      ? oldGame.news
-      : [];
-
-  migrated.history =
-    Array.isArray(oldGame.history)
-      ? oldGame.history
-      : [];
-
-  migrated.awards =
-    Array.isArray(oldGame.awards)
-      ? oldGame.awards
-      : [];
-
-  migrated.rivals =
-    oldGame.rivals || {};
-
-  migrated.worldRanking =
-    Array.isArray(oldGame.worldRanking)
-      ? oldGame.worldRanking
-      : [];
-
-  migrated.seasonStats =
-    oldGame.seasonStats || fresh.seasonStats;
-
-  migrated.aiManagers =
-    Array.isArray(oldGame.aiManagers)
-      ? oldGame.aiManagers
-      : [];
-
-  if (
-    oldGame.teams &&
-    Array.isArray(oldGame.teams)
-  ) {
-    migrated.teams =
-      oldGame.teams.map(team =>
-        normalizeTeam(
-          team,
-          team.leagueId ||
-          oldGame.selectedLeague
-        )
-      );
-  }
-
-  if (oldGame.team) {
-    const found =
-      migrated.teams.find(
-        t => t.id === oldGame.team.id
-      );
-
-    migrated.team =
-      found ||
-      normalizeTeam(
-        oldGame.team,
-        oldGame.selectedLeague
-      );
-  }
-
-  if (!migrated.team && migrated.selectedTeam) {
-    const found =
-      migrated.teams.find(
-        t => t.id === migrated.selectedTeam
-      );
-
-    if (found) {
-      migrated.team = found;
-    }
-  }
-
-  return migrated;
-}
-
-function loadGame() {
-  try {
-    let raw =
-      localStorage.getItem(SAVE_KEY);
-
-    if (!raw) {
-      for (const key of OLD_SAVE_KEYS) {
-        const old = localStorage.getItem(key);
-
-        if (old) {
-          raw = old;
-          break;
-        }
-      }
-    }
-
-    if (!raw) return false;
-
-    const parsed =
-      JSON.parse(raw);
-
-    game = migrateGame(parsed);
-
-    initializeAIManagers();
-    initializeTeamBudgets();
-    initializeFreeAgents();
-
-    if (!game.worldRanking.length) {
-      initializeWorldRanking();
-    }
-
-    chooseAllAILineups();
-
-    return true;
-  } catch (error) {
-    console.error(
-      "LOAD ERROR:",
-      error
-    );
-
-    return false;
-  }
-}
-
-/* =========================================================
-   CAREER SETUP
-   ========================================================= */
-
-function selectTarget(target) {
-  selectedTarget = target;
-
-  document
-    .querySelectorAll(".target-btn")
-    .forEach(btn =>
-      btn.classList.remove("selected")
-    );
-
-  const el =
-    document.getElementById(
-      "target-" + target
-    );
-
-  if (el) {
-    el.classList.add("selected");
-  }
-}
-
-function startCareer() {
-  const managerInput =
-    document.getElementById(
-      "managerName"
-    );
-
-  const managerName =
-    managerInput?.value.trim();
-
-  if (!managerName) {
-    alert("Masukkan nama manager.");
-    return;
-  }
-
-  if (
-    !game.selectedCountry ||
-    !game.selectedLeague ||
-    !game.selectedTeam
-  ) {
-    alert("Pilih negara, liga, dan tim terlebih dahulu.");
-    return;
-  }
-
-  const league =
-    getLeague(game.selectedLeague);
-
-  if (!league) {
-    alert("Liga tidak ditemukan.");
-    return;
-  }
-
-  game.managerName = managerName;
-  game.target = selectedTarget;
-
-  game.year = 2026;
-  game.date = "2026-01-05";
-  game.phase = "regular";
-
-  game.teams =
-    buildLeagueTeams(league);
-
-  const selected =
-    game.teams.find(
-      t => t.id === game.selectedTeam
-    );
-
-  if (!selected) {
-    alert("Tim tidak ditemukan.");
-    return;
-  }
-
-  game.team = selected;
-
-  game.budget =
-    selected.budget;
-
-  initializeAIManagers();
-  initializeTeamBudgets();
-  initializeFreeAgents();
-  initializeWorldRanking();
-
-  createSeason();
-
-  addNews(
-    `Selamat datang Manager ${managerName}. Target musim ini: ${targetLabel(game.target)}.`
-  );
-
-  saveGame(false);
-
-  showScreen("dashboardScreen");
-  renderDashboard();
-}
-
-function targetLabel(target) {
-  const labels = {
-    champion: "Juara",
-    top3: "Top 3",
-    playoff: "Lolos Playoff",
-    build: "Membangun Tim"
-  };
-
-  return labels[target] || target;
-}
-
-/* =========================================================
-   SCREEN NAVIGATION
-   ========================================================= */
-
-function showScreen(id) {
-  document
-    .querySelectorAll(".screen")
-    .forEach(screen =>
-      screen.classList.remove("active")
-    );
-
-  const target =
-    document.getElementById(id);
-
-  if (target) {
-    target.classList.add("active");
-  }
-}
-
-function backDashboard() {
-  showScreen("dashboardScreen");
-  renderDashboard();
-}
-
-/* =========================================================
-   INITIALIZATION
-   ========================================================= */
-
-function initializeGame() {
-  game = createDefaultGame();
-
-  if (!loadGame()) {
-    renderCountries();
-  } else {
-    if (game.team) {
-      showScreen("dashboardScreen");
-      renderDashboard();
-    } else {
-      renderCountries();
-    }
-  }
-}
-
-/* =========================================================
-   COUNTRY / LEAGUE / TEAM
-   ========================================================= */
-
-function renderCountries() {
-  showScreen("countryScreen");
+function renderMatchLineup() {
 
   const container =
     document.getElementById(
-      "countryList"
+      "matchLineup"
     );
 
-  if (!container) return;
+  if (!currentMatch) return;
 
-  container.innerHTML = "";
+  const user =
+    getUserTeam();
 
-  if (
-    typeof countries === "undefined"
-  ) {
-    container.innerHTML =
-      "<p>Data negara tidak ditemukan.</p>";
-    return;
-  }
+  if (!user) return;
 
-  countries.forEach(country => {
-    const button =
-      document.createElement("button");
+  const lineup =
+    getStartingPlayers(user);
 
-    button.className =
-      "country-btn";
+  container.innerHTML = `
 
-    button.innerHTML = `
-      <span class="country-flag">
-        ${country.flag}
-      </span>
-      <span>
-        ${country.name}
-      </span>
-    `;
+    <div class="panel">
 
-    button.onclick = () =>
-      selectCountry(country.id);
+      <h3>? Starting Lineup</h3>
 
-    container.appendChild(button);
-  });
-}
+      ${lineup.map(p => `
 
-function selectCountry(countryId) {
-  const country =
-    countries.find(
-      c => c.id === countryId
-    );
+        <div class="lineup-slot">
 
-  if (!country) return;
+          <strong>${escapeHtml(p.name)}</strong>
 
-  game.selectedCountry =
-    country.id;
+          <span class="role">
+            ${p.role}
+          </span>
 
-  const title =
-    document.getElementById(
-      "leagueCountryTitle"
-    );
+          <span style="float:right">
+            ${Math.round(p.rating)}
+          </span>
 
-  if (title) {
-    title.textContent =
-      `${country.flag} ${country.name}`;
-  }
-
-  const list =
-    document.getElementById(
-      "leagueList"
-    );
-
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  country.leagues.forEach(
-    leagueId => {
-      const league =
-        getLeague(leagueId);
-
-      if (!league) return;
-
-      const button =
-        document.createElement("button");
-
-      button.className =
-        "league-btn";
-
-      button.textContent =
-        league.name;
-
-      button.onclick = () =>
-        selectLeague(league.id);
-
-      list.appendChild(button);
-    }
-  );
-
-  showScreen("leagueScreen");
-}
-
-function selectLeague(leagueId) {
-  const league =
-    getLeague(leagueId);
-
-  if (!league) return;
-
-  game.selectedLeague =
-    league.id;
-
-  const list =
-    document.getElementById(
-      "teamList"
-    );
-
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  league.teams.forEach(team => {
-    const button =
-      document.createElement("button");
-
-    button.className =
-      "team-btn";
-
-    button.innerHTML = `
-      <strong>${team.name}</strong>
-      <small>${team.players?.length || 0} Players</small>
-    `;
-
-    button.onclick = () =>
-      selectTeam(team.id);
-
-    list.appendChild(button);
-  });
-
-  showScreen("teamScreen");
-}
-
-function selectTeam(teamId) {
-  game.selectedTeam =
-    teamId;
-
-  showScreen(
-    "managerSetupScreen"
-  );
-}
-
-/* =========================================================
-   SEASON CREATION
-   ========================================================= */
-
-function createSeason() {
-  if (!game.teams.length) return;
-
-  game.phase = "regular";
-
-  game.schedule = [];
-  game.currentMatch = null;
-
-  game.teams.forEach(team => {
-    resetTeamSeasonStats(team);
-  });
-
-  const pairs = [];
-
-  for (
-    let i = 0;
-    i < game.teams.length;
-    i++
-  ) {
-    for (
-      let j = i + 1;
-      j < game.teams.length;
-      j++
-    ) {
-      pairs.push([
-        game.teams[i],
-        game.teams[j]
-      ]);
-
-      pairs.push([
-        game.teams[j],
-        game.teams[i]
-      ]);
-    }
-  }
-
-  pairs.forEach(
-    ([home, away], index) => {
-      game.schedule.push({
-        id: uid("match"),
-        date: addDays(
-          `${game.year}-02-01`,
-          Math.floor(index / 2) * 2
-        ),
-        phase: "regular",
-        bestOf: 3,
-        home: home.id,
-        away: away.id,
-        played: false,
-        winner: null,
-        homeScore: 0,
-        awayScore: 0
-      });
-    }
-  );
-
-  game.schedule.sort(
-    (a, b) =>
-      new Date(a.date) -
-      new Date(b.date)
-  );
-
-  chooseAllAILineups();
-
-  addNews(
-    `📅 Musim ${game.year} resmi dimulai.`
-  );
-}
-
-/* =========================================================
-   DASHBOARD
-   ========================================================= */
-
-function renderDashboard() {
-  if (!game || !game.team) return;
-
-  const map = {
-    dashManager: game.managerName,
-    dashSeason: game.year,
-    dashTeam: game.team.name,
-    dashLeague:
-      getLeague(game.selectedLeague)?.name ||
-      "",
-    dashBudget: money(game.budget),
-    dashRep: game.reputation,
-    dashOrg: game.organizationLevel,
-    dashTarget: targetLabel(game.target)
-  };
-
-  Object.entries(map).forEach(
-    ([id, value]) => {
-      const el =
-        document.getElementById(id);
-
-      if (el) {
-        el.textContent = value;
-      }
-    }
-  );
-
-  const next =
-    game.schedule.find(
-      m =>
-        !m.played &&
-        (
-          m.home === game.team.id ||
-          m.away === game.team.id
-        )
-    );
-
-  const nextMatch =
-    document.getElementById(
-      "nextMatch"
-    );
-
-  if (nextMatch) {
-    if (next) {
-      const home =
-        game.teams.find(
-          t => t.id === next.home
-        );
-
-      const away =
-        game.teams.find(
-          t => t.id === next.away
-        );
-
-      nextMatch.innerHTML = `
-        <strong>${next.phase === "final" ? "🏆 GRAND FINAL" : "⚔️ NEXT MATCH"}</strong>
-        <div>${home?.name || "?"} vs ${away?.name || "?"}</div>
-        <small>${formatDate(next.date)}</small>
-      `;
-    } else {
-      nextMatch.innerHTML =
-        "<strong>Season selesai</strong>";
-    }
-  }
-
-  injectV13Dashboard();
-}
-
-/* =========================================================
-   V1.3 DASHBOARD PANEL
-   ========================================================= */
-
-function injectV13Dashboard() {
-  let panel =
-    document.getElementById(
-      "v13DashboardPanel"
-    );
-
-  if (!panel) {
-    panel =
-      document.createElement("div");
-
-    panel.id =
-      "v13DashboardPanel";
-
-    panel.className =
-      "v13-panel";
-
-    const dashboard =
-      document.getElementById(
-        "dashboardScreen"
-      );
-
-    if (dashboard) {
-      dashboard.appendChild(panel);
-    }
-  }
-
-  const rivalryCount =
-    Object.values(
-      game.rivals || {}
-    ).filter(
-      r =>
-        r.intensity >= 50
-    ).length;
-
-  panel.innerHTML = `
-    <div class="v13-title">
-      ⚡ V1.3 MANAGER CENTER
-    </div>
-
-    <div class="v13-grid">
-
-      <div class="v13-card">
-        <small>📅 DATE</small>
-        <strong>${formatDate(game.date)}</strong>
-      </div>
-
-      <div class="v13-card">
-        <small>🎮 PHASE</small>
-        <strong>${getPhase()}</strong>
-      </div>
-
-      <div class="v13-card">
-        <small>🧪 CHEMISTRY</small>
-        <strong>${Math.round(game.team.chemistry)}</strong>
-      </div>
-
-      <div class="v13-card">
-        <small>🆓 FREE AGENT</small>
-        <strong>${game.freeAgents.length}</strong>
-      </div>
-
-      <div class="v13-card">
-        <small>⚔️ RIVALRIES</small>
-        <strong>${rivalryCount}</strong>
-      </div>
-
-      <div class="v13-card">
-        <small>🌍 RANK</small>
-        <strong>#${getWorldRank(game.team.id)}</strong>
-      </div>
-
-    </div>
-
-    <div class="v13-actions">
-
-      <button onclick="openFreeAgents()">
-        🆓 Free Agents
-      </button>
-
-      <button onclick="openOffers()">
-        🤝 Transfer Offers
-      </button>
-
-      <button onclick="openRivalries()">
-        ⚔️ Rivalries
-      </button>
-
-      <button onclick="openAwards()">
-        🏆 Awards
-      </button>
-
-    </div>
-  `;
-}
-
-function getWorldRank(teamId) {
-  const index =
-    game.worldRanking.findIndex(
-      r => r.teamId === teamId
-    );
-
-  return index >= 0
-    ? index + 1
-    : "-";
-}
-
-/* =========================================================
-   ROSTER
-   ========================================================= */
-
-function openRoster() {
-  showScreen("rosterScreen");
-
-  const list =
-    document.getElementById(
-      "rosterList"
-    );
-
-  if (!list) return;
-
-  list.innerHTML =
-    game.team.players
-      .map(player => `
-        <div class="player-card">
-          <div>
-            <strong>${player.name}</strong>
-            <div>
-              ${player.role} • OVR ${player.rating}
-            </div>
-          </div>
-
-          <div>
-            <small>
-              Form ${Math.round(player.form)}
-            </small>
-            <br>
-            <small>
-              Fit ${Math.round(player.fitness)}
-            </small>
-          </div>
         </div>
-      `)
-      .join("");
+
+      `).join("")}
+
+      <p class="muted">
+        Team Power:
+        ${Math.round(teamPower(user))}
+      </p>
+
+    </div>
+
+  `;
+
 }
+
 
 /* =========================================================
-   TRANSFER SCREEN
+   SIMULATE CURRENT MATCH
    ========================================================= */
 
-function openTransfer() {
-  showScreen("transferScreen");
+function simulateCurrentMatch() {
 
-  const list =
-    document.getElementById(
-      "transferList"
-    );
+  if (!currentMatch) return;
 
-  const info =
-    document.getElementById(
-      "transferInfo"
-    );
-
-  if (info) {
-    info.innerHTML = `
-      <strong>Transfer Window:</strong>
-      ${transferWindowOpen() ? "🟢 OPEN" : "🔴 CLOSED"}
-      <br>
-      Budget:
-      ${money(game.budget)}
-    `;
-  }
-
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  game.teams
-    .filter(
-      team => team.id !== game.team.id
-    )
-    .forEach(team => {
-      team.players
-        .filter(
-          p =>
-            p.status === "active"
-        )
-        .forEach(player => {
-          const card =
-            document.createElement("div");
-
-          card.className =
-            "player-card";
-
-          card.innerHTML = `
-            <div>
-              <strong>${player.name}</strong>
-              <div>
-                ${team.name}
-              </div>
-              <small>
-                ${player.role} • OVR ${player.rating}
-              </small>
-            </div>
-
-            <div>
-              <small>
-                Value:
-                ${money(player.marketValue)}
-              </small>
-
-              <button
-                onclick="promptTransferOffer('${team.id}','${player.id}')"
-              >
-                Offer
-              </button>
-            </div>
-          `;
-
-          list.appendChild(card);
-        });
-    });
-}
-
-function promptTransferOffer(
-  teamId,
-  playerId
-) {
-  const team =
-    game.teams.find(
-      t => t.id === teamId
-    );
-
-  const player =
-    getPlayer(team, playerId);
-
-  if (!player) return;
-
-  const suggested =
-    Math.round(
-      player.marketValue
-    );
-
-  const input =
-    prompt(
-      `Transfer fee untuk ${player.name}?\nSuggested: ${money(suggested)}`,
-      suggested
-    );
-
-  if (input === null) return;
-
-  createTransferOffer(
-    teamId,
-    playerId,
-    Number(input)
-  );
-}
-
-/* =========================================================
-   SCHEDULE
-   ========================================================= */
-
-function openSchedule() {
-  showScreen("scheduleScreen");
-
-  const list =
-    document.getElementById(
-      "scheduleList"
-    );
-
-  if (!list) return;
-
-  list.innerHTML =
-    game.schedule
-      .filter(
-        m =>
-          m.home === game.team.id ||
-          m.away === game.team.id
-      )
-      .map(match => {
-        const home =
-          game.teams.find(
-            t => t.id === match.home
-          );
-
-        const away =
-          game.teams.find(
-            t => t.id === match.away
-          );
-
-        return `
-          <div class="schedule-item">
-            <strong>
-              ${home?.name} vs ${away?.name}
-            </strong>
-
-            <small>
-              ${formatDate(match.date)}
-              • ${match.phase}
-              • BO${match.bestOf}
-            </small>
-
-            <span>
-              ${
-                match.played
-                  ? `${match.homeScore} - ${match.awayScore}`
-                  : "⏳ Belum dimainkan"
-              }
-            </span>
-          </div>
-        `;
-      })
-      .join("");
-}
-
-/* =========================================================
-   SCOUTING
-   ========================================================= */
-
-function openScouting() {
-  showScreen("scoutingScreen");
-}
-
-function runScouting() {
   const result =
-    document.getElementById(
-      "scoutingResult"
-    );
+    simulateMatch(currentMatch);
 
   if (!result) return;
 
-  const available =
-    game.teams
-      .filter(
-        t => t.id !== game.team.id
-      )
-      .flatMap(
-        t =>
-          t.players.map(
-            p => ({
-              ...p,
-              teamName: t.name
-            })
-          )
-      )
-      .sort(
-        (a, b) =>
-          b.rating - a.rating
-      );
+  const home =
+    getTeam(currentMatch.homeId);
 
-  const top =
-    available.slice(0, 5);
+  const away =
+    getTeam(currentMatch.awayId);
 
-  result.innerHTML = top
-    .map(
-      p => `
-        <div class="player-card">
-          <div>
-            <strong>${p.name}</strong>
-            <div>${p.teamName}</div>
-          </div>
+  const winner =
+    getTeam(result.winnerId);
 
-          <div>
-            ${p.role}
-            <br>
-            OVR ${p.rating}
-          </div>
-        </div>
-      `
-    )
-    .join("");
-}
-
-/* =========================================================
-   WORLD
-   ========================================================= */
-
-function openWorld() {
-  showScreen("worldScreen");
-
-  renderWorldRanking();
-}
-
-function renderWorldRanking() {
-  const container =
-    document.getElementById(
-      "worldRanking"
+  const mvp =
+    winner.players.find(
+      p => p.id === result.mvpId
     );
 
-  if (!container) return;
+  document.getElementById(
+    "resultIcon"
+  ).textContent =
+    winner.id === game.teamId
+      ? "?"
+      : "?";
 
-  container.innerHTML =
-    game.worldRanking
-      .slice(0, 20)
-      .map(
-        (team, index) => `
-          <div class="ranking-item">
-            <strong>#${index + 1}</strong>
-            <span>${team.teamName}</span>
-            <b>${Math.round(team.points)}</b>
-          </div>
-        `
-      )
-      .join("");
-}
+  document.getElementById(
+    "resultTitle"
+  ).textContent =
+    winner.id === game.teamId
+      ? "VICTORY"
+      : "DEFEAT";
 
-function openMSC() {
-  alert(
-    "MSC system V1.3 aktif. Qualification akan ditentukan dari performa musim."
+  document.getElementById(
+    "resultScore"
+  ).textContent =
+    `${result.homeScore} - ${result.awayScore}`;
+
+  document.getElementById(
+    "resultText"
+  ).textContent =
+    `${home.name} vs ${away.name}`;
+
+  document.getElementById(
+    "resultMvp"
+  ).innerHTML = mvp
+    ? `
+      <div class="mvp-card">
+        ? MVP<br>
+        <strong>${escapeHtml(mvp.name)}</strong>
+        <br>
+        Rating ${Math.round(mvp.rating)}
+      </div>
+    `
+    : "";
+
+  currentMatch = null;
+
+  game.currentMatch = null;
+
+  updateWorldRanking();
+
+  addNews(
+    winner.id === game.teamId
+      ? "? Victory"
+      : "? Defeat",
+    `${winner.name} memenangkan pertandingan.`
   );
+
+  saveGame();
+
+  showScreen("resultScreen");
+
 }
 
-function openMSeries() {
-  alert(
-    "M-Series system V1.3 aktif. Qualification akan ditentukan dari World Ranking dan hasil internasional."
-  );
-}
 
 /* =========================================================
-   HISTORY
+   AFTER MATCH
    ========================================================= */
 
-function openHistory() {
-  showScreen("historyScreen");
+function afterMatch() {
 
-  const list =
-    document.getElementById(
-      "historyList"
-    );
+  currentMatch = null;
 
-  if (!list) return;
+  game.currentMatch = null;
 
-  list.innerHTML =
-    game.history.length
-      ? game.history
-          .map(
-            item => `
-              <div class="history-item">
-                <strong>
-                  Season ${item.year}
-                </strong>
-                <div>
-                  ${item.teamName}
-                </div>
-                <small>
-                  ${item.result}
-                </small>
-              </div>
-            `
-          )
-          .join("")
-      : "<p>Belum ada history.</p>";
+  const next =
+    findNextUserMatch();
+
+  if (next) {
+
+    game.date = next.date;
+
+    simulateAIMatches();
+
+  }
+
+  renderDashboard();
+
+  saveGame();
+
+  showDashboard();
+
 }
+
 
 /* =========================================================
    ADVANCE DAY
    ========================================================= */
 
 function advanceDay() {
+
   if (!game) return;
 
-  game.date =
-    addDays(game.date, 1);
+  const next =
+    findNextUserMatch();
+
+  if (!next) {
+
+    finishSeason();
+
+    return;
+
+  }
+
+  game.date = addDays(
+    game.date,
+    1
+  );
 
   recoverPlayers();
 
-  updateAllPlayerForms();
+  updatePlayerForm();
 
-  if (
-    transferWindowOpen()
-  ) {
-    processAITransfers();
-  }
-
-  chooseAllAILineups();
-
-  checkInjuries(game.team);
-
-  if (
-    monthOf(game.date) === 1 &&
-    new Date(game.date).getDate() === 1
-  ) {
-    processMonthlyFinance();
-  }
-
-  processDueMatches();
-
-  renderDashboard();
-
-  saveGame(false);
-}
-
-function processMonthlyFinance() {
-  const salary =
-    game.team.players.reduce(
-      (sum, p) =>
-        sum + Number(p.salary || 0),
-      0
-    );
-
-  game.budget -= salary;
-
-  game.budget +=
-    game.sponsor.monthlyIncome;
-
-  game.budget =
-    Math.max(0, game.budget);
-
-  addNews(
-    `💰 Finansial bulanan: payroll ${money(salary)}, sponsor +${money(game.sponsor.monthlyIncome)}.`
-  );
-}
-
-/* =========================================================
-   MATCH AUTO PROCESS
-   ========================================================= */
-
-function processDueMatches() {
-  const due =
-    game.schedule.find(
-      m =>
-        !m.played &&
-        m.date <= game.date &&
-        (
-          m.home === game.team.id ||
-          m.away === game.team.id
-        )
-    );
-
-  if (due) {
-    openMatch(due.id);
-  }
-}
-
-/* =========================================================
-   PLACEHOLDER MATCH FUNCTIONS
-   PART 2 WILL REPLACE / COMPLETE THESE
-   ========================================================= */
-
-function openMatch(matchId) {
-  const match =
-    game.schedule.find(
-      m => m.id === matchId
-    );
-
-  if (!match) return;
-
-  game.currentMatch = match;
-
-  const home =
-    game.teams.find(
-      t => t.id === match.home
-    );
-
-  const away =
-    game.teams.find(
-      t => t.id === match.away
-    );
-
-  if (!home || !away) return;
-
-  const stage =
-    document.getElementById(
-      "matchStage"
-    );
-
-  const homeName =
-    document.getElementById(
-      "matchHome"
-    );
-
-  const awayName =
-    document.getElementById(
-      "matchAway"
-    );
-
-  const homeRating =
-    document.getElementById(
-      "matchHomeRating"
-    );
-
-  const awayRating =
-    document.getElementById(
-      "matchAwayRating"
-    );
-
-  if (stage) {
-    stage.textContent =
-      `${match.phase.toUpperCase()} • BO${match.bestOf}`;
-  }
-
-  if (homeName) {
-    homeName.textContent =
-      home.name;
-  }
-
-  if (awayName) {
-    awayName.textContent =
-      away.name;
-  }
-
-  if (homeRating) {
-    homeRating.textContent =
-      Math.round(
-        calculateTeamPower(home)
-      );
-  }
-
-  if (awayRating) {
-    awayRating.textContent =
-      Math.round(
-        calculateTeamPower(away)
-      );
-  }
-
-  const homeChanceEl =
-    document.getElementById(
-      "homeChance"
-    );
-
-  const awayChanceEl =
-    document.getElementById(
-      "awayChance"
-    );
-
-  const hp =
-    calculateTeamPower(home);
-
-  const ap =
-    calculateTeamPower(away);
-
-  const total =
-    hp + ap;
-
-  if (homeChanceEl) {
-    homeChanceEl.textContent =
-      `${Math.round(hp / total * 100)}%`;
-  }
-
-  if (awayChanceEl) {
-    awayChanceEl.textContent =
-      `${Math.round(ap / total * 100)}%`;
-  }
-
-  showScreen("matchScreen");
-}
-
-/* =========================================================
-   END PART 1
-   ========================================================= */
-
-/*
-   PART 2 akan melanjutkan:
-
-   - Match Engine BO3 / BO5
-   - Player Match Stats
-   - MVP
-   - Standings
-   - Playoffs
-   - Grand Final
-   - Season Finish
-   - Awards
-   - Free Agent UI
-   - Offer UI
-   - Rivalry UI
-   - Organization upgrade
-   - Save migration completion
-   - Restart
-   - CSS injection
-   - initializeGame()
-*/
-/* =========================================================
-   MLBB PRO MANAGER V1.3
-   PART 2 / 2
-   ========================================================= */
-
-/* =========================================================
-   MATCH ENGINE
-   ========================================================= */
-
-function simulateCurrentMatch() {
-  if (!game.currentMatch) {
-    alert("Tidak ada match aktif.");
-    return;
-  }
-
-  const match = game.currentMatch;
-
-  const home = game.teams.find(
-    t => t.id === match.home
-  );
-
-  const away = game.teams.find(
-    t => t.id === match.away
-  );
-
-  if (!home || !away) {
-    alert("Data tim tidak ditemukan.");
-    return;
-  }
-
-  if (match.played) {
-    alert("Match sudah dimainkan.");
-    return;
-  }
-
-  chooseBestLineup(home);
-  chooseBestLineup(away);
-
-  const homePlayers = getStartingPlayers(home);
-  const awayPlayers = getStartingPlayers(away);
-
-  let homePower = calculateTeamPower(home);
-  let awayPower = calculateTeamPower(away);
-
-  /* Home advantage */
-  const homeAdvantage = 2.5;
-
-  homePower += homeAdvantage;
-
-  /* Rivalry */
-  const rivalry = updateRivalry(home, away);
-  const rivalryEffect = rivalryBonus(home, away);
-
-  homePower += rivalryEffect;
-
-  /* Manager style */
-  homePower += managerMatchBonus(home);
-  awayPower += managerMatchBonus(away);
-
-  /* Small randomness */
-  homePower += randFloat(-5, 5);
-  awayPower += randFloat(-5, 5);
-
-  const bestOf =
-    Number(match.bestOf || 3);
-
-  const winsNeeded =
-    Math.ceil(bestOf / 2);
-
-  let homeWins = 0;
-  let awayWins = 0;
-
-  const homeGameStats = [];
-  const awayGameStats = [];
-
-  while (
-    homeWins < winsNeeded &&
-    awayWins < winsNeeded
-  ) {
-    let hp =
-      homePower +
-      randFloat(-7, 7);
-
-    let ap =
-      awayPower +
-      randFloat(-7, 7);
-
-    if (hp >= ap) {
-      homeWins++;
-      homeGameStats.push(
-        createGamePlayerStats(
-          homePlayers,
-          true
-        )
-      );
-      awayGameStats.push(
-        createGamePlayerStats(
-          awayPlayers,
-          false
-        )
-      );
-    } else {
-      awayWins++;
-      awayGameStats.push(
-        createGamePlayerStats(
-          awayPlayers,
-          true
-        )
-      );
-      homeGameStats.push(
-        createGamePlayerStats(
-          homePlayers,
-          false
-        )
-      );
-    }
-  }
-
-  const homeWon =
-    homeWins > awayWins;
-
-  const winner =
-    homeWon ? home : away;
-
-  const loser =
-    homeWon ? away : home;
-
-  match.homeScore = homeWins;
-  match.awayScore = awayWins;
-  match.winner = winner.id;
-  match.played = true;
-
-  applyTeamMatchResult(
-    winner,
-    loser,
-    homeWon,
-    match
-  );
-
-  applyPlayerMatchStats(
-    home,
-    away,
-    homeGameStats,
-    awayGameStats,
-    homeWins,
-    awayWins
-  );
-
-  applyMatchFatigue(home);
-  applyMatchFatigue(away);
-
-  checkInjuries(home);
-  checkInjuries(away);
-
-  updateWorldRankingMatch(
-    winner,
-    loser,
-    match.phase !== "regular"
-  );
-
-  game.seasonStats.matches++;
-
-  if (winner.id === game.team.id) {
-    game.seasonStats.wins++;
-  } else if (loser.id === game.team.id) {
-    game.seasonStats.losses++;
-  }
-
-  const mvp =
-    calculateMatchMVP(
-      winner,
-      homeGameStats,
-      awayGameStats
-    );
-
-  if (mvp) {
-    mvp.mvp++;
-    mvp.morale =
-      clamp(
-        mvp.morale + 5,
-        30,
-        100
-      );
-  }
-
-  addNews(
-    `🎮 ${home.name} ${homeWins}-${awayWins} ${away.name}. ${winner.name} menang!`
-  );
-
-  if (mvp) {
-    addNews(
-      `⭐ MVP: ${mvp.name}`
-    );
-  }
-
-  showResultScreen(
-    match,
-    home,
-    away,
-    winner,
-    mvp
-  );
-
-  saveGame(false);
-}
-
-/* =========================================================
-   MANAGER BONUS
-   ========================================================= */
-
-function managerMatchBonus(team) {
-  const manager = team.manager;
-
-  if (!manager) return 0;
-
-  if (manager.style === "aggressive") {
-    return randFloat(1, 3);
-  }
-
-  if (manager.style === "strategic") {
-    return randFloat(1, 2.5);
-  }
-
-  if (manager.style === "defensive") {
-    return randFloat(0, 2);
-  }
-
-  return randFloat(0, 1.5);
-}
-
-/* =========================================================
-   GAME PLAYER STATS
-   ========================================================= */
-
-function createGamePlayerStats(
-  players,
-  won
-) {
-  if (!players.length) return [];
-
-  return players.map(player => {
-    const base =
-      player.rating +
-      (player.form - 70) * 0.15;
-
-    const kills = Math.max(
-      0,
-      Math.round(
-        base / 12 +
-        randFloat(-2, 3)
-      )
-    );
-
-    const deaths = Math.max(
-      0,
-      Math.round(
-        5 -
-        base / 25 +
-        randFloat(0, 3)
-      )
-    );
-
-    const assists = Math.max(
-      0,
-      Math.round(
-        base / 7 +
-        randFloat(1, 5)
-      )
-    );
-
-    return {
-      playerId: player.id,
-      kills,
-      deaths,
-      assists,
-      performance:
-        base +
-        (won ? randFloat(2, 7) : randFloat(-5, 2))
-    };
-  });
-}
-
-function applyPlayerMatchStats(
-  home,
-  away,
-  homeStats,
-  awayStats,
-  homeWins,
-  awayWins
-) {
-  const allHomePlayers =
-    getStartingPlayers(home);
-
-  const allAwayPlayers =
-    getStartingPlayers(away);
-
-  allHomePlayers.forEach(player => {
-    player.matchesPlayed++;
-
-    if (homeWins > awayWins) {
-      player.wins++;
-    } else {
-      player.losses++;
-    }
-
-    const stat =
-      homeStats
-        .flat()
-        .find(
-          s => s.playerId === player.id
-        );
-
-    if (stat) {
-      player.kills += stat.kills;
-      player.deaths += stat.deaths;
-      player.assists += stat.assists;
-
-      player.gameWins += homeWins;
-      player.gameLosses += awayWins;
-
-      updatePlayerForm(
-        player,
-        true,
-        homeWins > awayWins
-      );
-    }
-  });
-
-  allAwayPlayers.forEach(player => {
-    player.matchesPlayed++;
-
-    if (awayWins > homeWins) {
-      player.wins++;
-    } else {
-      player.losses++;
-    }
-
-    const stat =
-      awayStats
-        .flat()
-        .find(
-          s => s.playerId === player.id
-        );
-
-    if (stat) {
-      player.kills += stat.kills;
-      player.deaths += stat.deaths;
-      player.assists += stat.assists;
-
-      player.gameWins += awayWins;
-      player.gameLosses += homeWins;
-
-      updatePlayerForm(
-        player,
-        true,
-        awayWins > homeWins
-      );
-    }
-  });
-
-  updateTeamStats(
-    home,
-    homeStats.flat()
-  );
-
-  updateTeamStats(
-    away,
-    awayStats.flat()
-  );
-}
-
-function updateTeamStats(
-  team,
-  stats
-) {
-  stats.forEach(stat => {
-    team.seasonStats.kills +=
-      stat.kills;
-
-    team.seasonStats.deaths +=
-      stat.deaths;
-
-    team.seasonStats.assists +=
-      stat.assists;
-  });
-}
-
-/* =========================================================
-   MVP
-   ========================================================= */
-
-function calculateMatchMVP(
-  winner,
-  homeStats,
-  awayStats
-) {
-  const stats =
-    [
-      ...homeStats.flat(),
-      ...awayStats.flat()
-    ];
-
-  if (!stats.length) return null;
-
-  const candidates =
-    stats
-      .map(stat => {
-        const player =
-          findPlayerEverywhere(
-            stat.playerId
-          );
-
-        return {
-          player,
-          performance:
-            stat.performance
-        };
-      })
-      .filter(x => x.player);
-
-  candidates.sort(
-    (a, b) =>
-      b.performance -
-      a.performance
-  );
-
-  return candidates[0]?.player || null;
-}
-
-function findPlayerEverywhere(playerId) {
-  for (const team of game.teams) {
-    const player =
-      team.players.find(
-        p => p.id === playerId
-      );
-
-    if (player) return player;
-  }
-
-  return game.freeAgents.find(
-    p => p.id === playerId
-  ) || null;
-}
-
-/* =========================================================
-   TEAM MATCH RESULT
-   ========================================================= */
-
-function applyTeamMatchResult(
-  winner,
-  loser,
-  winnerIsHome,
-  match
-) {
-  if (match.phase === "regular") {
-    winner.standings.played++;
-    loser.standings.played++;
-
-    winner.standings.wins++;
-    loser.standings.losses++;
-
-    winner.standings.gameWins +=
-      winnerIsHome
-        ? match.homeScore
-        : match.awayScore;
-
-    winner.standings.gameLosses +=
-      winnerIsHome
-        ? match.awayScore
-        : match.homeScore;
-
-    loser.standings.gameWins +=
-      winnerIsHome
-        ? match.awayScore
-        : match.homeScore;
-
-    loser.standings.gameLosses +=
-      winnerIsHome
-        ? match.homeScore
-        : match.awayScore;
-
-    winner.standings.points += 3;
-
-    winner.seasonStats.wins++;
-    loser.seasonStats.losses++;
-
-    winner.chemistry =
-      clamp(
-        winner.chemistry + 2,
-        40,
-        100
-      );
-
-    loser.chemistry =
-      clamp(
-        loser.chemistry - 1,
-        40,
-        100
-      );
-  }
-
-  if (winner.id === game.team.id) {
-    game.reputation =
-      clamp(
-        game.reputation + 1,
-        0,
-        100
-      );
-  }
-
-  if (loser.id === game.team.id) {
-    game.reputation =
-      clamp(
-        game.reputation - 1,
-        0,
-        100
-      );
-  }
-}
-
-/* =========================================================
-   RESULT SCREEN
-   ========================================================= */
-
-function showResultScreen(
-  match,
-  home,
-  away,
-  winner,
-  mvp
-) {
-  const teams =
-    document.getElementById(
-      "resultTeams"
-    );
-
-  const score =
-    document.getElementById(
-      "resultScore"
-    );
-
-  const winnerEl =
-    document.getElementById(
-      "resultWinner"
-    );
-
-  const message =
-    document.getElementById(
-      "resultMessage"
-    );
-
-  if (teams) {
-    teams.textContent =
-      `${home.name} vs ${away.name}`;
-  }
-
-  if (score) {
-    score.textContent =
-      `${match.homeScore} - ${match.awayScore}`;
-  }
-
-  if (winnerEl) {
-    winnerEl.textContent =
-      `🏆 ${winner.name}`;
-  }
-
-  if (message) {
-    message.innerHTML = `
-      ${winner.name} memenangkan pertandingan.
-      ${
-        mvp
-          ? `<br>⭐ MVP: ${mvp.name}`
-          : ""
-      }
-    `;
-  }
-
-  showScreen("resultScreen");
-}
-
-function finishMatch() {
-  game.currentMatch = null;
-
-  checkSeasonProgress();
-
-  saveGame(false);
-
-  renderDashboard();
-
-  showScreen("dashboardScreen");
-}
-
-/* =========================================================
-   SEASON PROGRESS
-   ========================================================= */
-
-function checkSeasonProgress() {
-  if (game.phase === "regular") {
-    const remaining =
-      game.schedule.filter(
-        m =>
-          m.phase === "regular" &&
-          !m.played
-      );
-
-    if (!remaining.length) {
-      startPlayoffs();
-    }
-  }
-
-  if (game.phase === "playoff") {
-    const remaining =
-      game.schedule.filter(
-        m =>
-          m.phase === "playoff" &&
-          !m.played
-      );
-
-    if (!remaining.length) {
-      startGrandFinal();
-    }
-  }
-
-  if (game.phase === "final") {
-    const final =
-      game.schedule.find(
-        m =>
-          m.phase === "final"
-      );
-
-    if (
-      final &&
-      final.played
-    ) {
-      finishSeason();
-    }
-  }
-}
-
-/* =========================================================
-   STANDINGS
-   ========================================================= */
-
-function getStandings() {
-  return [...game.teams].sort(
-    (a, b) => {
-      if (
-        b.standings.points !==
-        a.standings.points
-      ) {
-        return (
-          b.standings.points -
-          a.standings.points
-        );
-      }
-
-      const bDiff =
-        b.standings.gameWins -
-        b.standings.gameLosses;
-
-      const aDiff =
-        a.standings.gameWins -
-        a.standings.gameLosses;
-
-      return bDiff - aDiff;
-    }
-  );
-}
-
-function openStandings() {
-  const standings =
-    getStandings();
-
-  let html =
-    `<div class="v13-modal">
-      <h2>📊 Standings</h2>`;
-
-  standings.forEach(
-    (team, index) => {
-      html += `
-        <div class="ranking-item">
-          <strong>#${index + 1}</strong>
-          <span>${team.name}</span>
-          <b>${team.standings.points} PTS</b>
-        </div>
-      `;
-    }
-  );
-
-  html += `
-      <button onclick="closeV13Modal()">
-        Tutup
-      </button>
-    </div>`;
-
-  showV13Modal(html);
-}
-
-/* =========================================================
-   PLAYOFFS
-   ========================================================= */
-
-function startPlayoffs() {
-  game.phase = "playoff";
-
-  const standings =
-    getStandings();
-
-  const top4 =
-    standings.slice(0, 4);
-
-  if (top4.length < 4) {
-    startGrandFinal();
-    return;
-  }
-
-  const existing =
-    game.schedule.filter(
-      m => m.phase === "playoff"
-    );
-
-  if (existing.length) {
-    return;
-  }
-
-  const semi1 = {
-    id: uid("semi"),
-    date: addDays(
-      game.date,
-      2
-    ),
-    phase: "playoff",
-    bestOf: 3,
-    home: top4[0].id,
-    away: top4[3].id,
-    played: false,
-    winner: null,
-    homeScore: 0,
-    awayScore: 0
-  };
-
-  const semi2 = {
-    id: uid("semi"),
-    date: addDays(
-      game.date,
-      4
-    ),
-    phase: "playoff",
-    bestOf: 3,
-    home: top4[1].id,
-    away: top4[2].id,
-    played: false,
-    winner: null,
-    homeScore: 0,
-    awayScore: 0
-  };
-
-  game.schedule.push(
-    semi1,
-    semi2
-  );
-
-  addNews(
-    `🏆 Playoffs dimulai! ${top4.map(t => t.name).join(", ")} lolos ke Top 4.`
-  );
-
-  saveGame(false);
-}
-
-/* =========================================================
-   GRAND FINAL
-   ========================================================= */
-
-function startGrandFinal() {
-  const semis =
-    game.schedule.filter(
-      m => m.phase === "playoff"
-    );
-
-  if (
-    semis.length < 2 ||
-    semis.some(
-      m => !m.played
-    )
-  ) {
-    return;
-  }
-
-  const finalExists =
-    game.schedule.some(
-      m => m.phase === "final"
-    );
-
-  if (finalExists) {
-    game.phase = "final";
-    return;
-  }
-
-  const finalists =
-    semis.map(
-      m =>
-        game.teams.find(
-          t => t.id === m.winner
-        )
-    ).filter(Boolean);
-
-  if (finalists.length !== 2) {
-    return;
-  }
-
-  game.phase = "final";
-
-  game.schedule.push({
-    id: uid("final"),
-    date: addDays(
-      game.date,
-      3
-    ),
-    phase: "final",
-    bestOf: 5,
-    home: finalists[0].id,
-    away: finalists[1].id,
-    played: false,
-    winner: null,
-    homeScore: 0,
-    awayScore: 0
-  });
-
-  addNews(
-    `🔥 GRAND FINAL: ${finalists[0].name} vs ${finalists[1].name}.`
-  );
-
-  saveGame(false);
-}
-
-/* =========================================================
-   PLAY NEXT MATCH
-   ========================================================= */
-
-function playNextMatch() {
-  const match =
-    game.schedule.find(
-      m =>
-        !m.played &&
-        (
-          m.home === game.team.id ||
-          m.away === game.team.id
-        )
-    );
-
-  if (!match) {
-    checkSeasonProgress();
-    alert("Tidak ada match berikutnya.");
-    return;
-  }
-
-  if (
-    new Date(match.date) >
-    new Date(game.date)
-  ) {
-    game.date = match.date;
-  }
-
-  openMatch(match.id);
-}
-
-/* =========================================================
-   AI MATCH SIMULATION
-   ========================================================= */
-
-function simulateAIMatches() {
-  let simulated = 0;
-
-  const matches =
-    game.schedule.filter(
-      m =>
-        !m.played &&
-        m.date <= game.date
-    );
-
-  matches.forEach(match => {
-    const involvesUser =
-      match.home === game.team.id ||
-      match.away === game.team.id;
-
-    if (involvesUser) return;
-
-    const old =
-      game.currentMatch;
-
-    game.currentMatch =
-      match;
-
-    simulateCurrentMatch();
-
-    game.currentMatch = old;
-
-    simulated++;
-  });
-
-  return simulated;
-}
-
-/* =========================================================
-   ADVANCE DAY OVERRIDE
-   ========================================================= */
-
-const originalAdvanceDay =
-  advanceDay;
-
-advanceDay = function () {
-  if (!game) return;
-
-  game.date =
-    addDays(
-      game.date,
-      1
-    );
-
-  recoverPlayers();
-
-  updateAllPlayerForms();
-
-  if (transferWindowOpen()) {
-    processAITransfers();
-    aiRenewContracts();
-  }
-
-  chooseAllAILineups();
-
-  checkInjuries(
-    game.team
-  );
+  processDailyFinance();
 
   simulateAIMatches();
 
-  if (
-    new Date(game.date).getDate() === 1
-  ) {
-    processMonthlyFinance();
+  aiManagement();
+
+  const match =
+    game.schedule.find(m =>
+      !m.played &&
+      m.date === game.date &&
+      (
+        m.homeId === game.teamId ||
+        m.awayId === game.teamId
+      )
+    );
+
+  if (match) {
+
+    currentMatch = match;
+
+    game.currentMatch = match;
+
+    openMatch(match);
+
+    saveGame();
+
+    return;
+
   }
 
-  checkSeasonProgress();
+  if (regularSeasonFinished()) {
+
+    createPlayoffs();
+
+  }
 
   renderDashboard();
 
-  saveGame(false);
-};
+  saveGame();
+
+}
+
 
 /* =========================================================
-   FREE AGENT UI
+   PLAYER RECOVERY
    ========================================================= */
 
-function openFreeAgents() {
-  let html = `
-    <div class="v13-modal">
-      <h2>🆓 Free Agent Market</h2>
+function recoverPlayers() {
 
-      <p>
-        Transfer Window:
-        ${
-          transferWindowOpen()
-            ? "🟢 OPEN"
-            : "🔴 CLOSED"
+  game.teams.forEach(team => {
+
+    team.players.forEach(player => {
+
+      player.fatigue =
+        clamp(
+          player.fatigue - rand(3, 8),
+          0,
+          100
+        );
+
+      player.fitness =
+        clamp(
+          player.fitness + rand(2, 6),
+          0,
+          100
+        );
+
+      if (player.injury) {
+
+        player.injury.days--;
+
+        if (player.injury.days <= 0) {
+
+          player.injury = null;
+
+          player.status = "active";
+
+          player.morale =
+            clamp(
+              player.morale + 5,
+              0,
+              100
+            );
+
         }
-      </p>
 
-      <div class="v13-list">
-  `;
+      }
 
-  if (!game.freeAgents.length) {
-    html += `
-      <p>Tidak ada free agent.</p>
-    `;
-  }
+    });
 
-  game.freeAgents.forEach(
-    player => {
-      html += `
-        <div class="v13-player">
-          <div>
-            <strong>
-              ${player.name}
-            </strong>
+  });
 
-            <small>
-              ${player.role}
-              • OVR ${player.rating}
-              • POT ${player.potential}
-            </small>
-
-            <small>
-              Salary:
-              ${money(player.salary)}
-            </small>
-          </div>
-
-          <button
-            onclick="signFreeAgent('${player.id}')"
-          >
-            Sign
-          </button>
-        </div>
-      `;
-    }
-  );
-
-  html += `
-      </div>
-
-      <button
-        onclick="closeV13Modal()"
-      >
-        Tutup
-      </button>
-    </div>
-  `;
-
-  showV13Modal(html);
 }
 
+
+function updatePlayerForm() {
+
+  game.teams.forEach(team => {
+
+    team.players.forEach(player => {
+
+      if (chance(20)) {
+
+        player.form =
+          clamp(
+            player.form + rand(-2, 2),
+            0,
+            100
+          );
+
+      }
+
+    });
+
+  });
+
+}
+
+
 /* =========================================================
-   TRANSFER OFFERS UI
+   FINANCE
    ========================================================= */
 
-function openOffers() {
-  let html = `
-    <div class="v13-modal">
-      <h2>🤝 Transfer Offers</h2>
-  `;
+function processDailyFinance() {
 
-  const offers =
-    game.transferOffers;
+  if (!game) return;
 
-  if (!offers.length) {
-    html += `
-      <p>Belum ada transfer offer.</p>
-    `;
-  }
+  const date =
+    new Date(game.date + "T12:00:00");
 
-  offers.forEach(
-    offer => {
-      html += `
-        <div class="v13-player">
-          <div>
-            <strong>
-              ${offer.playerName}
-            </strong>
+  if (date.getDate() !== 1) return;
 
-            <small>
-              Fee:
-              ${money(offer.fee)}
-            </small>
+  game.teams.forEach(team => {
 
-            <small>
-              Status:
-              ${offer.status}
-            </small>
-          </div>
+    const payroll =
+      team.players.reduce(
+        (sum, p) =>
+          sum + Number(p.salary || 0),
+        0
+      );
 
-          ${
-            offer.status === "accepted"
-              ? `
-                <button
-                  onclick="completeTransfer('${offer.id}')"
-                >
-                  Complete
-                </button>
-              `
-              : ""
+    team.budget -= payroll;
+
+    team.budget +=
+      Number(team.sponsor?.income || 0);
+
+  });
+
+  syncUserTeam();
+
+  addNews(
+    "? Finance",
+    "Payroll dan pemasukan sponsor telah diproses."
+  );
+
+}
+
+
+/* =========================================================
+   AI MANAGEMENT
+   ========================================================= */
+
+function aiManagement() {
+
+  if (!game) return;
+
+  game.teams
+    .filter(t => t.id !== game.teamId)
+    .forEach(team => {
+
+      const lineup =
+        chooseBestLineup(team);
+
+      team.lineup =
+        lineup.map(p => p.id);
+
+      // sign free agent kalau role kurang
+      for (const role of ROLE_ORDER) {
+
+        const hasRole =
+          team.players.some(
+            p =>
+              normalizeRole(p.role) === role
+          );
+
+        if (!hasRole && game.freeAgents.length) {
+
+          const candidate =
+            game.freeAgents
+              .filter(
+                p =>
+                  normalizeRole(p.role) === role
+              )
+              .sort(
+                (a, b) =>
+                  b.rating - a.rating
+              )[0];
+
+          if (candidate) {
+
+            team.players.push(candidate);
+
+            game.freeAgents =
+              game.freeAgents.filter(
+                p => p.id !== candidate.id
+              );
+
           }
-        </div>
-      `;
-    }
-  );
 
-  html += `
-      <button
-        onclick="closeV13Modal()"
-      >
-        Tutup
-      </button>
-    </div>
-  `;
+        }
 
-  showV13Modal(html);
-}
+      }
 
-/* =========================================================
-   RIVALRY UI
-   ========================================================= */
+      // release pemain terlemah kalau roster terlalu besar
+      if (team.players.length > 9) {
 
-function openRivalries() {
-  let html = `
-    <div class="v13-modal">
-      <h2>⚔️ Rivalries</h2>
-  `;
+        const weakest =
+          [...team.players]
+            .sort(
+              (a, b) =>
+                a.rating - b.rating
+            )[0];
 
-  const rivalries =
-    Object.values(
-      game.rivals || {}
-    ).sort(
-      (a, b) =>
-        b.intensity -
-        a.intensity
-    );
+        team.players =
+          team.players.filter(
+            p => p.id !== weakest.id
+          );
 
-  if (!rivalries.length) {
-    html += `
-      <p>Belum ada rivalry.</p>
-    `;
-  }
-
-  rivalries.forEach(
-    rivalry => {
-      const a =
-        game.teams.find(
-          t =>
-            t.id ===
-            rivalry.teamA
+        game.freeAgents.push(
+          weakest
         );
 
-      const b =
-        game.teams.find(
-          t =>
-            t.id ===
-            rivalry.teamB
-        );
+      }
 
-      html += `
-        <div class="v13-player">
-          <div>
-            <strong>
-              ${a?.name || "?"}
-              vs
-              ${b?.name || "?"}
-            </strong>
+    });
 
-            <small>
-              Intensity:
-              ${Math.round(
-                rivalry.intensity
-              )}/100
-            </small>
-
-            <small>
-              Matches:
-              ${rivalry.matches}
-            </small>
-
-            <small>
-              Transfers:
-              ${rivalry.transfers}
-            </small>
-          </div>
-        </div>
-      `;
-    }
-  );
-
-  html += `
-      <button
-        onclick="closeV13Modal()"
-      >
-        Tutup
-      </button>
-    </div>
-  `;
-
-  showV13Modal(html);
 }
+
 
 /* =========================================================
-   AWARDS
+   TRANSFER VALUE
    ========================================================= */
 
-function calculateAwards() {
-  const players =
-    game.teams.flatMap(
-      team =>
-        team.players.map(
-          p => ({
-            ...p,
-            teamName: team.name
-          })
-        )
-    );
+function calculateTransferValue(player) {
 
-  if (!players.length) return [];
+  const ageFactor =
+    player.age <= 23
+      ? 1.25
+      : player.age <= 27
+        ? 1
+        : 0.8;
 
-  const mvp =
-    [...players].sort(
-      (a, b) =>
-        b.mvp - a.mvp
-    )[0];
+  const potentialFactor =
+    1 +
+    (player.potential - player.rating)
+    / 100;
 
-  const kills =
-    [...players].sort(
-      (a, b) =>
-        b.kills - a.kills
-    )[0];
+  return Math.round(
+    player.rating *
+    player.rating *
+    10000 *
+    ageFactor *
+    potentialFactor
+  );
 
-  const assists =
-    [...players].sort(
-      (a, b) =>
-        b.assists - a.assists
-    )[0];
-
-  return [
-    {
-      award: "MVP Season",
-      player: mvp
-    },
-    {
-      award: "Top Killer",
-      player: kills
-    },
-    {
-      award: "Top Assist",
-      player: assists
-    }
-  ];
 }
 
-function openAwards() {
-  const awards =
-    game.awards.length
-      ? game.awards
-      : calculateAwards();
 
-  let html = `
-    <div class="v13-modal">
-      <h2>🏆 Season Awards</h2>
-  `;
+/* =========================================================
+   TRANSFER MARKET
+   ========================================================= */
 
-  if (!awards.length) {
-    html += `
-      <p>Award belum tersedia.</p>
-    `;
+function getTransferPlayers() {
+
+  const result = [];
+
+  game.teams.forEach(team => {
+
+    if (team.id === game.teamId) return;
+
+    team.players.forEach(player => {
+
+      result.push({
+
+        player,
+
+        team
+
+      });
+
+    });
+
+  });
+
+  return result.sort(
+    (a, b) =>
+      b.player.rating -
+      a.player.rating
+  );
+
+}
+
+
+function makeTransferOffer(
+  sellingTeam,
+  player
+) {
+
+  const value =
+    calculateTransferValue(player);
+
+  const offer =
+    Math.round(value * 1.05);
+
+  if (game.budget < offer) {
+
+    alert(
+      "Budget tidak cukup.\n" +
+      "Harga: " +
+      money(offer)
+    );
+
+    return;
+
   }
 
-  awards.forEach(
-    award => {
-      const player =
-        award.player;
+  const accept =
+    chance(70);
 
-      if (!player) return;
+  if (accept) {
 
-      html += `
-        <div class="v13-player">
-          <div>
-            <strong>
-              ${award.award}
-            </strong>
+    completeTransfer(
+      sellingTeam,
+      player,
+      offer
+    );
 
-            <small>
-              ${player.name}
-            </small>
+  } else {
 
-            <small>
-              ${player.teamName || ""}
-            </small>
-          </div>
-        </div>
-      `;
+    const counter =
+      Math.round(
+        value *
+        randFloat(1.1, 1.35)
+      );
+
+    const yes =
+      confirm(
+        `Offer ditolak.\n\n` +
+        `Counter offer:\n${money(counter)}\n\n` +
+        `Terima?`
+      );
+
+    if (yes) {
+
+      if (game.budget < counter) {
+
+        alert("Budget tidak cukup.");
+
+        return;
+
+      }
+
+      completeTransfer(
+        sellingTeam,
+        player,
+        counter
+      );
+
+    }
+
+  }
+
+}
+
+
+function completeTransfer(
+  sellingTeam,
+  player,
+  price
+) {
+
+  const user =
+    getUserTeam();
+
+  if (!user) return;
+
+  if (user.players.length >= 12) {
+
+    alert(
+      "Roster terlalu penuh. Maksimal 12 pemain."
+    );
+
+    return;
+
+  }
+
+  const index =
+    sellingTeam.players.findIndex(
+      p => p.id === player.id
+    );
+
+  if (index === -1) return;
+
+  sellingTeam.players.splice(
+    index,
+    1
+  );
+
+  user.players.push(player);
+
+  user.budget -= price;
+
+  player.status = "active";
+
+  player.morale =
+    clamp(
+      player.morale + 5,
+      0,
+      100
+    );
+
+  game.budget =
+    user.budget;
+
+  addNews(
+    "? Transfer Completed",
+    `${player.name} bergabung dengan ${user.name}.`
+  );
+
+  saveGame();
+
+  renderTransfer();
+
+  alert(
+    `${player.name} berhasil direkrut!`
+  );
+
+}
+
+
+/* =========================================================
+   FREE AGENT SIGNING
+   ========================================================= */
+
+function signFreeAgent(playerId) {
+
+  const user =
+    getUserTeam();
+
+  const player =
+    game.freeAgents.find(
+      p => p.id === playerId
+    );
+
+  if (!user || !player) return;
+
+  if (user.players.length >= 12) {
+
+    alert("Roster sudah maksimal.");
+
+    return;
+
+  }
+
+  const signingFee =
+    Math.round(
+      calculateTransferValue(player) * 0.08
+    );
+
+  if (user.budget < signingFee) {
+
+    alert("Budget tidak cukup.");
+
+    return;
+
+  }
+
+  user.budget -= signingFee;
+
+  user.players.push(player);
+
+  game.freeAgents =
+    game.freeAgents.filter(
+      p => p.id !== player.id
+    );
+
+  game.budget =
+    user.budget;
+
+  addNews(
+    "? Free Agent",
+    `${player.name} bergabung secara gratis transfer.`
+  );
+
+  saveGame();
+
+  renderScouting();
+
+}
+
+
+/* =========================================================
+   CONTRACT
+   ========================================================= */
+
+function renewContract(playerId) {
+
+  const user =
+    getUserTeam();
+
+  const player =
+    getPlayer(
+      user,
+      playerId
+    );
+
+  if (!player) return;
+
+  const increase =
+    Math.round(
+      player.salary * 0.15
+    );
+
+  player.salary += increase;
+
+  player.contractUntil =
+    String(game.year + 2);
+
+  addNews(
+    "? Contract",
+    `${player.name} memperpanjang kontrak.`
+  );
+
+  saveGame();
+
+  renderRoster();
+
+}
+
+
+/* =========================================================
+   RELEASE PLAYER
+   ========================================================= */
+
+function releasePlayer(playerId) {
+
+  const user =
+    getUserTeam();
+
+  if (!user) return;
+
+  if (user.players.length <= 7) {
+
+    alert(
+      "Minimal roster adalah 7 pemain."
+    );
+
+    return;
+
+  }
+
+  const player =
+    getPlayer(
+      user,
+      playerId
+    );
+
+  if (!player) return;
+
+  const confirmRelease =
+    confirm(
+      `Lepaskan ${player.name}?`
+    );
+
+  if (!confirmRelease) return;
+
+  user.players =
+    user.players.filter(
+      p => p.id !== player.id
+    );
+
+  player.status = "free";
+
+  game.freeAgents.push(player);
+
+  addNews(
+    "? Release",
+    `${player.name} dilepas dari roster.`
+  );
+
+  saveGame();
+
+  renderRoster();
+
+}
+
+
+/* =========================================================
+   DEVELOPMENT
+   ========================================================= */
+
+function developPlayer(player) {
+
+  if (!player) return;
+
+  const potentialGap =
+    player.potential -
+    player.rating;
+
+  if (potentialGap <= 0) return;
+
+  const chanceDevelop =
+    clamp(
+      35 +
+      potentialGap * 3 -
+      Math.max(0, player.age - 24) * 5,
+      5,
+      85
+    );
+
+  if (
+    chance(chanceDevelop)
+  ) {
+
+    player.rating =
+      clamp(
+        player.rating + rand(1, 2),
+        1,
+        player.potential
+      );
+
+  }
+
+}
+
+
+function developAllPlayers() {
+
+  game.teams.forEach(team => {
+
+    team.players.forEach(
+      developPlayer
+    );
+
+  });
+
+}
+
+
+/* =========================================================
+   PLAYOFF
+   ========================================================= */
+
+function regularSeasonFinished() {
+
+  if (!game.schedule.length)
+    return false;
+
+  return game.schedule
+    .filter(m =>
+      m.type === "regular"
+    )
+    .every(m => m.played);
+
+}
+
+
+function getStandings() {
+
+  return [...game.teams].sort(
+    (a, b) => {
+
+      const A = a.standings;
+      const B = b.standings;
+
+      if (B.points !== A.points) {
+        return B.points - A.points;
+      }
+
+      const gdA =
+        A.gameWins -
+        A.gameLosses;
+
+      const gdB =
+        B.gameWins -
+        B.gameLosses;
+
+      return gdB - gdA;
+
     }
   );
 
-  html += `
-      <button
-        onclick="closeV13Modal()"
-      >
-        Tutup
-      </button>
-    </div>
-  `;
-
-  showV13Modal(html);
 }
+
+
+function createPlayoffs() {
+
+  if (game.phase === "playoffs")
+    return;
+
+  const standings =
+    getStandings();
+
+  const top =
+    standings.slice(0, 4);
+
+  if (top.length < 4) {
+
+    finishSeason();
+
+    return;
+
+  }
+
+  game.phase = "playoffs";
+
+  const start =
+    addDays(game.date, 3);
+
+  game.schedule.push({
+
+    id: uid("playoff"),
+
+    date: start,
+
+    round: 1,
+
+    type: "playoff",
+
+    stage: "semifinal",
+
+    bestOf: 5,
+
+    homeId: top[0].id,
+
+    awayId: top[3].id,
+
+    played: false,
+
+    result: null
+
+  });
+
+  game.schedule.push({
+
+    id: uid("playoff"),
+
+    date: addDays(start, 1),
+
+    round: 2,
+
+    type: "playoff",
+
+    stage: "semifinal",
+
+    bestOf: 5,
+
+    homeId: top[1].id,
+
+    awayId: top[2].id,
+
+    played: false,
+
+    result: null
+
+  });
+
+  addNews(
+    "? Playoffs",
+    "Regular season selesai. Playoffs dimulai!"
+  );
+
+}
+
+
+/* =========================================================
+   PLAYOFF PROCESSING
+   ========================================================= */
+
+function processPlayoffs() {
+
+  if (game.phase !== "playoffs")
+    return;
+
+  const semis =
+    game.schedule.filter(
+      m =>
+        m.type === "playoff" &&
+        m.stage === "semifinal" &&
+        m.played
+    );
+
+  if (
+    semis.length === 2 &&
+    !game.schedule.some(
+      m => m.stage === "grand_final"
+    )
+  ) {
+
+    const winners =
+      semis.map(
+        m =>
+          getTeam(
+            m.result.winnerId
+          )
+      );
+
+    game.schedule.push({
+
+      id: uid("final"),
+
+      date: addDays(game.date, 2),
+
+      round: 10,
+
+      type: "playoff",
+
+      stage: "grand_final",
+
+      bestOf: 7,
+
+      homeId: winners[0].id,
+
+      awayId: winners[1].id,
+
+      played: false,
+
+      result: null
+
+    });
+
+    return;
+
+  }
+
+  const final =
+    game.schedule.find(
+      m =>
+        m.stage === "grand_final" &&
+        m.played
+    );
+
+  if (final) {
+
+    finishSeason();
+
+  }
+
+}
+
 
 /* =========================================================
    SEASON FINISH
    ========================================================= */
 
-function finishSeason() {
+function evaluateTarget() {
+
   const standings =
     getStandings();
 
-  const champion =
-    game.schedule
-      .filter(
-        m =>
-          m.phase === "final"
-      )
-      .map(
-        m =>
-          game.teams.find(
-            t => t.id === m.winner
-          )
-      )
-      .filter(Boolean)[0];
-
   const position =
     standings.findIndex(
-      t =>
-        t.id === game.team.id
+      t => t.id === game.teamId
     ) + 1;
 
-  let resultText =
-    `Finish posisi #${position}`;
-
-  if (
-    champion &&
-    champion.id === game.team.id
-  ) {
-    resultText =
-      "🏆 JUARA";
-  }
-
-  const awards =
-    calculateAwards();
-
-  game.awards = awards;
-
-  game.history.unshift({
-    year: game.year,
-    teamName: game.team.name,
-    result: resultText,
-    position,
-    champion:
-      champion?.name || null,
-    awards: clone(awards)
-  });
-
-  evaluateTarget(position);
-
-  addNews(
-    `🏁 Musim ${game.year} selesai. ${game.team.name}: ${resultText}.`
-  );
-
-  processEndSeasonContracts();
-
-  developAllPlayers();
-
-  game.year++;
-
-  game.date =
-    `${game.year}-01-05`;
-
-  game.phase = "regular";
-
-  game.seasonStats = {
-    matches: 0,
-    wins: 0,
-    losses: 0,
-    playerStats: {},
-    teamStats: {}
-  };
-
-  createSeason();
-
-  saveGame(false);
-
-  alert(
-    `Musim selesai!\n${resultText}\nMusim baru ${game.year} dimulai.`
-  );
-}
-
-/* =========================================================
-   TARGET EVALUATION
-   ========================================================= */
-
-function evaluateTarget(position) {
   let success = false;
 
   if (game.target === "champion") {
@@ -4094,32 +2344,141 @@ function evaluateTarget(position) {
     success = position <= 3;
   }
 
-  if (game.target === "playoff") {
-    success = position <= 4;
+  if (game.target === "top5") {
+    success = position <= 5;
   }
 
-  if (game.target === "build") {
-    success =
-      game.team.players.some(
-        p => p.rating >= 80
-      );
+  if (game.target === "survive") {
+    success = position <= standings.length;
   }
 
-  if (success) {
+  return {
+    position,
+    success
+  };
+
+}
+
+
+function processEndSeasonContracts() {
+
+  game.teams.forEach(team => {
+
+    const expired = [];
+
+    team.players.forEach(player => {
+
+      const year =
+        Number(player.contractUntil);
+
+      if (
+        Number.isFinite(year) &&
+        year <= game.year
+      ) {
+
+        if (
+          player.rating < 78 &&
+          team.id !== game.teamId
+        ) {
+
+          expired.push(player);
+
+        } else {
+
+          player.contractUntil =
+            String(game.year + 1);
+
+        }
+
+      }
+
+    });
+
+    expired.forEach(player => {
+
+      team.players =
+        team.players.filter(
+          p => p.id !== player.id
+        );
+
+      player.status = "free";
+
+      game.freeAgents.push(player);
+
+    });
+
+  });
+
+}
+
+
+function finishSeason() {
+
+  if (!game) return;
+
+  if (
+    game.phase === "finished"
+  ) return;
+
+  const evaluation =
+    evaluateTarget();
+
+  const standings =
+    getStandings();
+
+  const champion =
+    standings[0];
+
+  const user =
+    getUserTeam();
+
+  let prize = 0;
+
+  if (evaluation.position === 1) {
+    prize = 500000000;
+  } else if (evaluation.position <= 3) {
+    prize = 250000000;
+  } else {
+    prize = 100000000;
+  }
+
+  user.budget += prize;
+
+  const record = {
+
+    year: game.year,
+
+    teamId: user.id,
+
+    teamName: user.name,
+
+    position: evaluation.position,
+
+    champion: champion?.name || "-",
+
+    target: game.target,
+
+    targetSuccess: evaluation.success,
+
+    wins: user.standings.wins,
+
+    losses: user.standings.losses
+
+  };
+
+  game.history.unshift(record);
+
+  if (evaluation.success) {
+
     game.reputation =
       clamp(
-        game.reputation + 8,
+        game.reputation + 10,
         0,
         100
       );
 
-    game.budget +=
-      100000000;
-
-    addNews(
-      `🎯 Target musim tercapai! Bonus organisasi +Rp 100 juta.`
-    );
   } else {
+
     game.reputation =
       clamp(
         game.reputation - 5,
@@ -4127,1377 +2486,1904 @@ function evaluateTarget(position) {
         100
       );
 
-    addNews(
-      `⚠️ Target musim belum tercapai.`
-    );
   }
-}
 
-/* =========================================================
-   CONTRACT END SEASON
-   ========================================================= */
+  developAllPlayers();
 
-function processEndSeasonContracts() {
+  processEndSeasonContracts();
+
+  game.year++;
+
+  game.date =
+    `${game.year}-01-01`;
+
+  game.phase = "regular";
+
+  game.schedule = [];
+
   game.teams.forEach(team => {
-    const remaining = [];
+
+    team.standings = {
+
+      played: 0,
+
+      wins: 0,
+
+      losses: 0,
+
+      points: 0,
+
+      gameWins: 0,
+
+      gameLosses: 0
+
+    };
+
+    team.seasonStats = {
+
+      matches: 0,
+
+      wins: 0,
+
+      losses: 0
+
+    };
 
     team.players.forEach(player => {
-      if (
-        !contractEndingThisSeason(player)
-      ) {
-        remaining.push(player);
-        return;
-      }
 
-      if (
-        team.id === game.team.id
-      ) {
-        remaining.push(player);
-        return;
-      }
+      player.age++;
 
-      const important =
-        team.startingFive.includes(
-          player.id
-        ) ||
-        player.rating >= 78;
+      player.fatigue = 0;
 
-      if (
-        important &&
-        team.budget >=
-          player.salary * 2
-      ) {
-        player.contractUntil =
-          `${game.year + 1}-12-31`;
+      player.fitness = 100;
 
-        remaining.push(player);
+      player.form = 75;
 
-        return;
-      }
+      player.morale = 75;
 
-      player.status =
-        "free_agent";
-
-      player.teamId = null;
-      player.formerTeam =
-        team.name;
-
-      game.freeAgents.push(
-        player
-      );
-
-      addNews(
-        `📤 ${player.name} meninggalkan ${team.name} dan masuk Free Agent.`
-      );
     });
 
-    team.players =
-      remaining;
-
-    chooseBestLineup(team);
   });
 
-  game.freeAgents =
-    game.freeAgents.filter(
-      p =>
-        p.status === "free_agent"
-    );
-}
+  createSeasonSchedule();
 
-/* =========================================================
-   ORGANIZATION
-   ========================================================= */
-
-function upgradeOrganization() {
-  const costs = {
-    1: 100000000,
-    2: 175000000,
-    3: 275000000,
-    4: 400000000
-  };
-
-  const cost =
-    costs[game.organizationLevel];
-
-  if (!cost) {
-    alert(
-      "Organization sudah level maksimal."
-    );
-    return;
-  }
-
-  if (game.budget < cost) {
-    alert(
-      `Budget tidak cukup.\nButuh ${money(cost)}`
-    );
-    return;
-  }
-
-  game.budget -= cost;
-
-  game.organizationLevel++;
-
-  game.team.chemistry =
-    clamp(
-      game.team.chemistry + 5,
-      0,
-      100
-    );
+  updateWorldRanking();
 
   addNews(
-    `🏢 Organization naik ke Level ${game.organizationLevel}.`
+    "? New Season",
+    `Musim ${game.year} dimulai. ${champion.name} adalah juara musim lalu.`
   );
 
-  saveGame(false);
+  saveGame();
 
   renderDashboard();
+
+  alert(
+    `Musim selesai!\n\n` +
+    `Posisi: #${evaluation.position}\n` +
+    `Champion: ${champion.name}\n` +
+    `Prize: ${money(prize)}\n\n` +
+    (
+      evaluation.success
+        ? "TARGET BERHASIL! ?"
+        : "Target gagal. Musim depan lebih kuat!"
+    )
+  );
+
 }
 
+
 /* =========================================================
-   PROFILE PLAYER
+   SCREENS
    ========================================================= */
 
-function openPlayerProfile(playerId) {
+function showScreen(id) {
+
+  document
+    .querySelectorAll(".screen")
+    .forEach(screen => {
+      screen.classList.remove("active");
+    });
+
+  const target =
+    document.getElementById(id);
+
+  if (target) {
+    target.classList.add("active");
+  }
+
+}
+
+function showDashboard() {
+
+  renderDashboard();
+
+  showScreen(
+    "dashboardScreen"
+  );
+
+}
+
+function showRoster() {
+
+  renderRoster();
+
+  showScreen(
+    "rosterScreen"
+  );
+
+}
+
+function showTransfer() {
+
+  renderTransfer();
+
+  showScreen(
+    "transferScreen"
+  );
+
+}
+
+function showSchedule() {
+
+  renderSchedule();
+
+  showScreen(
+    "scheduleScreen"
+  );
+
+}
+
+function showScouting() {
+
+  renderScouting();
+
+  showScreen(
+    "scoutingScreen"
+  );
+
+}
+
+function showWorld() {
+
+  updateWorldRanking();
+
+  renderWorld();
+
+  showScreen(
+    "worldScreen"
+  );
+
+}
+
+function showTournament() {
+
+  renderTournament();
+
+  showScreen(
+    "tournamentScreen"
+  );
+
+}
+
+function showHistory() {
+
+  renderHistory();
+
+  showScreen(
+    "historyScreen"
+  );
+
+}
+
+
+/* =========================================================
+   COUNTRY / LEAGUE / TEAM SELECTION
+   ========================================================= */
+
+function renderCountries() {
+
+  const container =
+    document.getElementById(
+      "countryList"
+    );
+
+  if (!container) return;
+
+  container.innerHTML =
+    countries.map(country => `
+
+      <button onclick="selectCountry('${country.id}')">
+
+        <div style="font-size:32px">
+          ${country.flag}
+        </div>
+
+        <strong>
+          ${escapeHtml(country.name)}
+        </strong>
+
+        <small>
+          ${escapeHtml(country.description)}
+        </small>
+
+      </button>
+
+    `).join("");
+
+}
+
+
+function selectCountry(id) {
+
+  selectedCountry =
+    countries.find(
+      c => c.id === id
+    );
+
+  if (!selectedCountry) return;
+
+  document.getElementById(
+    "leagueCountryTitle"
+  ).textContent =
+    selectedCountry.name;
+
+  renderLeagues();
+
+  showScreen(
+    "leagueScreen"
+  );
+
+}
+
+
+function renderLeagues() {
+
+  const container =
+    document.getElementById(
+      "leagueList"
+    );
+
+  if (!container) return;
+
+  const leagues =
+    getAllLeagues().filter(
+      league =>
+        league.region ===
+        selectedCountry.name
+    );
+
+  if (!leagues.length) {
+
+    container.innerHTML = `
+
+      <div class="panel">
+
+        <h3>Coming Soon</h3>
+
+        <p class="muted">
+          Liga region ini belum tersedia
+          pada database V1.5.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  container.innerHTML =
+    leagues.map(league => `
+
+      <button onclick="selectLeague('${league.id}')">
+
+        <div style="font-size:30px">
+          ?
+        </div>
+
+        <strong>
+          ${escapeHtml(league.name)}
+        </strong>
+
+        <small>
+          Season ${league.season}
+        </small>
+
+      </button>
+
+    `).join("");
+
+}
+
+
+function selectLeague(id) {
+
+  selectedLeagueId = id;
+
+  const league =
+    getLeague(id);
+
+  if (!league) return;
+
+  document.getElementById(
+    "selectedLeagueName"
+  ).textContent =
+    league.name;
+
+  renderTeams();
+
+  showScreen(
+    "teamScreen"
+  );
+
+}
+
+
+function renderTeams() {
+
+  const league =
+    getLeague(selectedLeagueId);
+
+  const container =
+    document.getElementById(
+      "teamList"
+    );
+
+  if (!league || !container)
+    return;
+
+  container.innerHTML =
+    league.teams.map(team => `
+
+      <button onclick="selectTeam('${team.id}')">
+
+        <div style="font-size:30px">
+          ??
+        </div>
+
+        <strong>
+          ${escapeHtml(team.name)}
+        </strong>
+
+        <small>
+          ${team.players.length} players
+        </small>
+
+      </button>
+
+    `).join("");
+
+}
+
+
+function selectTeam(id) {
+
+  selectedTeamId = id;
+
+  showScreen(
+    "managerSetupScreen"
+  );
+
+}
+
+
+/* =========================================================
+   START CAREER
+   ========================================================= */
+
+function selectTarget(target) {
+
+  selectedTarget = target;
+
+  document
+    .querySelectorAll(
+      ".target-grid button"
+    )
+    .forEach(
+      b =>
+        b.style.outline = ""
+    );
+
+  const map = {
+
+    champion:
+      "targetChampion",
+
+    top3:
+      "targetTop3",
+
+    top5:
+      "targetTop5",
+
+    survive:
+      "targetSurvive"
+
+  };
+
+  const button =
+    document.getElementById(
+      map[target]
+    );
+
+  if (button) {
+
+    button.style.outline =
+      "2px solid #f4c542";
+
+  }
+
+}
+
+
+function startCareer() {
+
+  const managerName =
+    document
+      .getElementById(
+        "managerName"
+      )
+      .value.trim() ||
+    "New Manager";
+
+  const league =
+    getLeague(
+      selectedLeagueId
+    );
+
+  if (!league) {
+
+    alert(
+      "League tidak ditemukan."
+    );
+
+    return;
+
+  }
+
+  const original =
+    league.teams;
+
+  game =
+    createGame();
+
+  game.teams =
+    original.map(
+      createTeam
+    );
+
+  game.teamId =
+    selectedTeamId;
+
+  game.team =
+    getUserTeam();
+
+  game.team.manager = {
+
+    name: managerName,
+
+    reputation: 50
+
+  };
+
+  game.team.lineup =
+    chooseBestLineup(
+      game.team
+    ).map(
+      p => p.id
+    );
+
+  game.budget =
+    game.team.budget;
+
+  initFreeAgents();
+
+  createSeasonSchedule();
+
+  initRivals();
+
+  updateWorldRanking();
+
+  addNews(
+    "? Career Started",
+    `Selamat datang, ${managerName}!`
+  );
+
+  saveGame();
+
+  renderDashboard();
+
+  showDashboard();
+
+}
+
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+
+function renderDashboard() {
+
+  if (!game) return;
+
+  syncUserTeam();
+
+  const team =
+    getUserTeam();
+
+  const standings =
+    getStandings();
+
+  const position =
+    standings.findIndex(
+      t => t.id === team.id
+    ) + 1;
+
+  const next =
+    findNextUserMatch();
+
+  document.getElementById(
+    "dashTeamName"
+  ).textContent =
+    team.name;
+
+  document.getElementById(
+    "dashLeague"
+  ).textContent =
+    getLeague(game.leagueId)?.name ||
+    "League";
+
+  document.getElementById(
+    "dashBudget"
+  ).textContent =
+    money(team.budget);
+
+  document.getElementById(
+    "dashboardMain"
+  ).innerHTML = `
+
+    <div class="dashboard-card">
+
+      <div class="muted">
+        Season ${game.year}
+      </div>
+
+      <h2>
+        ${escapeHtml(team.name)}
+      </h2>
+
+      <div class="stat-grid">
+
+        <div class="stat-box">
+          Position
+          <strong>
+            #${position}
+          </strong>
+        </div>
+
+        <div class="stat-box">
+          Points
+          <strong>
+            ${team.standings.points}
+          </strong>
+        </div>
+
+        <div class="stat-box">
+          Record
+          <strong>
+            ${team.standings.wins}W -
+            ${team.standings.losses}L
+          </strong>
+        </div>
+
+        <div class="stat-box">
+          Power
+          <strong>
+            ${Math.round(teamPower(team))}
+          </strong>
+        </div>
+
+        <div class="stat-box">
+          Chemistry
+          <strong>
+            ${Math.round(team.chemistry)}
+          </strong>
+        </div>
+
+        <div class="stat-box">
+          Reputation
+          <strong>
+            ${Math.round(game.reputation)}
+          </strong>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="dashboard-card">
+
+      <div class="muted">
+        Next Match
+      </div>
+
+      ${
+        next
+          ? `
+            <h3>
+              ${escapeHtml(
+                getTeam(next.homeId).name
+              )}
+              vs
+              ${escapeHtml(
+                getTeam(next.awayId).name
+              )}
+            </h3>
+
+            <p>
+              ? ${formatDate(next.date)}
+              <br>
+              ? BO${next.bestOf}
+            </p>
+
+            <button
+              class="primary"
+              onclick="goToNextMatch()">
+              OPEN MATCH
+            </button>
+          `
+          : `
+            <p>
+              Tidak ada pertandingan berikutnya.
+            </p>
+          `
+      }
+
+    </div>
+
+    <div class="dashboard-card">
+
+      <div class="muted">
+        Target
+      </div>
+
+      <h3>
+        ${targetLabel(game.target)}
+      </h3>
+
+      <p>
+        Finish sesuai target untuk meningkatkan
+        reputasi organisasi.
+      </p>
+
+    </div>
+
+  `;
+
+}
+
+
+function targetLabel(target) {
+
+  return {
+
+    champion:
+      "? Champion",
+
+    top3:
+      "? Finish Top 3",
+
+    top5:
+      "? Finish Top 5",
+
+    survive:
+      "?? Survive Season"
+
+  }[target] || target;
+
+}
+
+
+function goToNextMatch() {
+
+  const match =
+    findNextUserMatch();
+
+  if (!match) return;
+
+  game.date =
+    match.date;
+
+  simulateAIMatches();
+
+  openMatch(match);
+
+}
+
+
+/* =========================================================
+   ROSTER UI
+   ========================================================= */
+
+function renderRoster(filter = "all") {
+
+  const team =
+    getUserTeam();
+
+  const container =
+    document.getElementById(
+      "rosterList"
+    );
+
+  if (!team || !container)
+    return;
+
+  const starters =
+    getStartingPlayers(team);
+
+  let players =
+    [...team.players];
+
+  if (filter === "starting") {
+
+    players =
+      starters;
+
+  }
+
+  if (filter === "bench") {
+
+    players =
+      players.filter(
+        p => !starters.includes(p)
+      );
+
+  }
+
+  players.sort(
+    (a, b) =>
+      b.rating - a.rating
+  );
+
+  container.innerHTML = `
+
+    <div class="panel">
+
+      <button
+        class="primary"
+        onclick="autoLineup()">
+        ? AUTO BEST LINEUP
+      </button>
+
+      <p class="muted">
+        ${team.players.length}/12 players
+      </p>
+
+    </div>
+
+    ${players.map(player => {
+
+      const starter =
+        starters.includes(player);
+
+      return `
+
+        <div class="player-card"
+             onclick="openPlayer('${player.id}')">
+
+          <div class="player-card-main">
+
+            <div class="player-avatar">
+              ?
+            </div>
+
+            <div class="player-info">
+
+              <h3>
+                ${escapeHtml(player.name)}
+              </h3>
+
+              <small>
+
+                <span class="role">
+                  ${player.role}
+                </span>
+
+                ${player.nationality}
+
+                ${starter
+                  ? " ? STARTER"
+                  : " ? BENCH"}
+
+              </small>
+
+            </div>
+
+            <div class="rating">
+              ${Math.round(player.rating)}
+            </div>
+
+          </div>
+
+          <div class="player-meta">
+
+            <span>
+              Form ${Math.round(player.form)}
+            </span>
+
+            <span>
+              Fitness ${Math.round(player.fitness)}
+            </span>
+
+            <span>
+              Potential ${Math.round(player.potential)}
+            </span>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }).join("")}
+
+  `;
+
+}
+
+
+/* =========================================================
+   PLAYER PROFILE
+   ========================================================= */
+
+function openPlayer(playerId) {
+
   const player =
-    findPlayerEverywhere(
+    getPlayer(
+      getUserTeam(),
       playerId
     );
 
   if (!player) return;
 
-  showV13Modal(`
-    <div class="v13-modal">
-      <h2>${player.name}</h2>
+  currentPlayerId =
+    player.id;
 
-      <div class="v13-profile">
-        <div>Role: <b>${player.role}</b></div>
-        <div>OVR: <b>${player.rating}</b></div>
-        <div>Potential: <b>${player.potential}</b></div>
-        <div>Age: <b>${player.age}</b></div>
-        <div>Form: <b>${Math.round(player.form)}</b></div>
-        <div>Fitness: <b>${Math.round(player.fitness)}</b></div>
-        <div>Morale: <b>${Math.round(player.morale)}</b></div>
-        <div>Salary: <b>${money(player.salary)}</b></div>
-        <div>Market Value: <b>${money(player.marketValue)}</b></div>
-        <div>Matches: <b>${player.matchesPlayed}</b></div>
-        <div>Wins: <b>${player.wins}</b></div>
-        <div>Losses: <b>${player.losses}</b></div>
-        <div>MVP: <b>${player.mvp}</b></div>
-        <div>Kills: <b>${player.kills}</b></div>
-        <div>Deaths: <b>${player.deaths}</b></div>
-        <div>Assists: <b>${player.assists}</b></div>
+  const container =
+    document.getElementById(
+      "playerProfile"
+    );
+
+  container.innerHTML = `
+
+    <div style="text-align:center">
+
+      <div class="player-avatar"
+           style="margin:auto;width:80px;height:80px">
+        ?
       </div>
 
-      <button onclick="closeV13Modal()">
-        Tutup
-      </button>
+      <h2>
+        ${escapeHtml(player.name)}
+      </h2>
+
+      <span class="role">
+        ${player.role}
+      </span>
+
     </div>
-  `);
-}
 
-/* =========================================================
-   V1.3 MODAL
-   ========================================================= */
+    <div class="stat-grid">
 
-function showV13Modal(html) {
-  let modal =
-    document.getElementById(
-      "v13Modal"
-    );
+      <div class="stat-box">
+        Rating
+        <strong>${player.rating}</strong>
+      </div>
 
-  if (!modal) {
-    modal =
-      document.createElement("div");
+      <div class="stat-box">
+        Potential
+        <strong>${player.potential}</strong>
+      </div>
 
-    modal.id =
-      "v13Modal";
+      <div class="stat-box">
+        Age
+        <strong>${player.age}</strong>
+      </div>
 
-    modal.className =
-      "v13-overlay";
+      <div class="stat-box">
+        Morale
+        <strong>${player.morale}</strong>
+      </div>
 
-    document.body.appendChild(
-      modal
-    );
-  }
+      <div class="stat-box">
+        Form
+        <strong>${player.form}</strong>
+      </div>
 
-  modal.innerHTML = html;
-  modal.style.display = "flex";
-}
+      <div class="stat-box">
+        Fitness
+        <strong>${player.fitness}</strong>
+      </div>
 
-function closeV13Modal() {
-  const modal =
-    document.getElementById(
-      "v13Modal"
-    );
+      <div class="stat-box">
+        Fatigue
+        <strong>${player.fatigue}</strong>
+      </div>
 
-  if (modal) {
-    modal.style.display =
-      "none";
-  }
-}
+      <div class="stat-box">
+        Salary
+        <strong>${money(player.salary)}</strong>
+      </div>
 
-/* =========================================================
-   SAVE / RESTART
-   ========================================================= */
-
-function restartGame() {
-  const confirmRestart =
-    confirm(
-      "Yakin ingin menghapus career dan mulai dari awal?"
-    );
-
-  if (!confirmRestart) return;
-
-  localStorage.removeItem(
-    SAVE_KEY
-  );
-
-  OLD_SAVE_KEYS.forEach(
-    key =>
-      localStorage.removeItem(key)
-  );
-
-  game =
-    createDefaultGame();
-
-  selectedTarget =
-    "top3";
-
-  renderCountries();
-}
-
-function loadSavedCareer() {
-  if (loadGame()) {
-    if (game.team) {
-      renderDashboard();
-      showScreen(
-        "dashboardScreen"
-      );
-    }
-  }
-}
-
-/* =========================================================
-   INBOX
-   ========================================================= */
-
-function openInbox() {
-  let html = `
-    <div class="v13-modal">
-      <h2>📨 Inbox</h2>
-  `;
-
-  if (!game.inbox.length) {
-    html += `
-      <p>Inbox kosong.</p>
-    `;
-  }
-
-  game.inbox.forEach(
-    mail => {
-      html += `
-        <div class="v13-player">
-          <div>
-            <strong>
-              ${mail.title}
-            </strong>
-
-            <small>
-              ${formatDate(mail.date)}
-            </small>
-
-            <p>
-              ${mail.message}
-            </p>
-          </div>
-        </div>
-      `;
-    }
-  );
-
-  html += `
-      <button
-        onclick="closeV13Modal()"
-      >
-        Tutup
-      </button>
     </div>
-  `;
 
-  showV13Modal(html);
-}
+    <div class="panel">
 
-/* =========================================================
-   LINEUP
-   ========================================================= */
-
-function openLineup() {
-  let html = `
-    <div class="v13-modal">
-      <h2>🎮 Starting Five</h2>
+      <h3>? Career Stats</h3>
 
       <p>
-        Role coverage:
-        ${Math.round(
-          roleCoverage(
-            getStartingPlayers(
-              game.team
-            )
-          )
-        )}
+        Matches:
+        ${player.stats.matches}
       </p>
-  `;
 
-  game.team.players
-    .sort(
-      (a, b) =>
-        lineupScore(b) -
-        lineupScore(a)
-    )
-    .forEach(
-      player => {
-        const starter =
-          game.team.startingFive.includes(
-            player.id
-          );
+      <p>
+        Wins:
+        ${player.stats.wins}
+      </p>
 
-        html += `
-          <div class="v13-player">
-            <div>
-              <strong>
-                ${player.name}
-              </strong>
+      <p>
+        Losses:
+        ${player.stats.losses}
+      </p>
 
-              <small>
-                ${player.role}
-                • OVR ${player.rating}
-                • Form ${Math.round(player.form)}
-              </small>
-            </div>
+      <p>
+        K/D:
+        ${player.stats.kills}
+        /
+        ${player.stats.deaths}
+      </p>
 
-            <button
-              onclick="toggleStarter('${player.id}')"
-            >
-              ${
-                starter
-                  ? "Starter"
-                  : "Bench"
-              }
-            </button>
-          </div>
-        `;
-      }
-    );
+      <p>
+        Assists:
+        ${player.stats.assists}
+      </p>
 
-  html += `
-      <button onclick="autoLineup()">
-        🤖 Auto Lineup
-      </button>
+      <p>
+        MVP:
+        ${player.stats.mvp}
+      </p>
 
-      <button onclick="closeV13Modal()">
-        Tutup
-      </button>
-    </div>
-  `;
-
-  showV13Modal(html);
-}
-
-function toggleStarter(playerId) {
-  const index =
-    game.team.startingFive
-      .indexOf(playerId);
-
-  if (index >= 0) {
-    if (
-      game.team.startingFive.length <= 5
-    ) {
-      alert(
-        "Starting Five harus berisi 5 pemain."
-      );
-      return;
-    }
-
-    game.team.startingFive.splice(
-      index,
-      1
-    );
-  } else {
-    if (
-      game.team.startingFive.length >= 5
-    ) {
-      alert(
-        "Starting Five sudah penuh."
-      );
-      return;
-    }
-
-    game.team.startingFive.push(
-      playerId
-    );
-  }
-
-  game.team.chemistry =
-    clamp(
-      game.team.chemistry + rand(-1, 1),
-      40,
-      100
-    );
-
-  saveGame(false);
-  openLineup();
-}
-
-function autoLineup() {
-  chooseBestLineup(
-    game.team
-  );
-
-  saveGame(false);
-
-  openLineup();
-}
-
-/* =========================================================
-   WORLD / INTERNATIONAL
-   ========================================================= */
-
-function qualifyInternational() {
-  const rank =
-    getWorldRank(
-      game.team.id
-    );
-
-  if (rank <= 4) {
-    game.msc.status =
-      "Qualified";
-
-    return true;
-  }
-
-  game.msc.status =
-    "Not Qualified";
-
-  return false;
-}
-
-function updateInternationalStatus() {
-  qualifyInternational();
-
-  if (
-    getWorldRank(game.team.id) <= 8
-  ) {
-    game.mSeries.status =
-      "Potential Qualification";
-  } else {
-    game.mSeries.status =
-      "Not Qualified";
-  }
-}
-
-/* =========================================================
-   V1.3 CSS
-   ========================================================= */
-
-function injectV13Styles() {
-  if (
-    document.getElementById(
-      "v13Styles"
-    )
-  ) {
-    return;
-  }
-
-  const style =
-    document.createElement("style");
-
-  style.id =
-    "v13Styles";
-
-  style.textContent = `
-    .v13-panel {
-      margin: 16px 0;
-      padding: 16px;
-      border-radius: 18px;
-      background: rgba(20,20,28,.96);
-      color: white;
-      box-shadow: 0 10px 30px rgba(0,0,0,.18);
-    }
-
-    .v13-title {
-      font-size: 18px;
-      font-weight: 800;
-      margin-bottom: 12px;
-    }
-
-    .v13-grid {
-      display: grid;
-      grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .v13-card {
-      padding: 12px;
-      border-radius: 12px;
-      background: rgba(255,255,255,.07);
-    }
-
-    .v13-card small {
-      display: block;
-      opacity: .65;
-      font-size: 10px;
-      margin-bottom: 5px;
-    }
-
-    .v13-card strong {
-      font-size: 14px;
-    }
-
-    .v13-actions {
-      display: grid;
-      grid-template-columns:
-        repeat(2, minmax(0,1fr));
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .v13-actions button,
-    .v13-modal button {
-      border: 0;
-      border-radius: 12px;
-      padding: 11px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .v13-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 14px;
-      background: rgba(0,0,0,.72);
-    }
-
-    .v13-modal {
-      width: min(620px, 100%);
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 18px;
-      border-radius: 20px;
-      background: #17171f;
-      color: white;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
-    }
-
-    .v13-modal h2 {
-      margin-top: 0;
-    }
-
-    .v13-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin: 12px 0;
-    }
-
-    .v13-player {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 12px;
-      border-radius: 14px;
-      background: rgba(255,255,255,.07);
-    }
-
-    .v13-player > div {
-      min-width: 0;
-    }
-
-    .v13-player strong,
-    .v13-player small {
-      display: block;
-    }
-
-    .v13-player small {
-      margin-top: 4px;
-      opacity: .7;
-    }
-
-    .v13-player p {
-      margin-bottom: 0;
-      opacity: .85;
-    }
-
-    .v13-profile {
-      display: grid;
-      grid-template-columns:
-        repeat(2, minmax(0,1fr));
-      gap: 8px;
-      margin: 14px 0;
-    }
-
-    .v13-profile div {
-      padding: 10px;
-      border-radius: 10px;
-      background: rgba(255,255,255,.07);
-    }
-
-    @media(max-width:520px) {
-      .v13-grid,
-      .v13-actions,
-      .v13-profile {
-        grid-template-columns: 1fr;
-      }
-
-      .v13-player {
-        align-items: flex-start;
-      }
-
-      .v13-modal {
-        padding: 14px;
-      }
-    }
-  `;
-
-  document.head.appendChild(
-    style
-  );
-}
-
-/* =========================================================
-   DASHBOARD EXTRA BUTTONS
-   ========================================================= */
-
-function injectV13DashboardButtons() {
-  if (
-    document.getElementById(
-      "v13QuickButtons"
-    )
-  ) {
-    return;
-  }
-
-  const dashboard =
-    document.getElementById(
-      "dashboardScreen"
-    );
-
-  if (!dashboard) return;
-
-  const box =
-    document.createElement("div");
-
-  box.id =
-    "v13QuickButtons";
-
-  box.className =
-    "v13-panel";
-
-  box.innerHTML = `
-    <div class="v13-title">
-      ⚡ Quick Management
     </div>
 
-    <div class="v13-actions">
-      <button onclick="openLineup()">
-        🎮 Lineup
-      </button>
+    <div class="panel">
 
-      <button onclick="openFreeAgents()">
-        🆓 Free Agent
-      </button>
+      <p>
+        Contract until:
+        <strong>
+          ${player.contractUntil}
+        </strong>
+      </p>
 
-      <button onclick="openOffers()">
-        🤝 Offers
-      </button>
-
-      <button onclick="openRivalries()">
-        ⚔️ Rivalry
-      </button>
-
-      <button onclick="openAwards()">
-        🏆 Awards
-      </button>
-
-      <button onclick="openInbox()">
-        📨 Inbox
-      </button>
-
-      <button onclick="openStandings()">
-        📊 Standings
-      </button>
-
-      <button onclick="upgradeOrganization()">
-        🏢 Upgrade Org
-      </button>
-    </div>
-  `;
-
-  dashboard.appendChild(box);
-}
-
-/* =========================================================
-   DASHBOARD RENDER WRAPPER
-   ========================================================= */
-
-const originalRenderDashboard =
-  renderDashboard;
-
-renderDashboard = function () {
-  originalRenderDashboard();
-
-  injectV13Styles();
-  injectV13DashboardButtons();
-
-  updateInternationalStatus();
-};
-
-/* =========================================================
-   ROSTER CLICKABLE PROFILE
-   ========================================================= */
-
-function renderDetailedRoster() {
-  const list =
-    document.getElementById(
-      "rosterList"
-    );
-
-  if (!list || !game.team) return;
-
-  list.innerHTML =
-    game.team.players
-      .map(
-        player => `
-          <div
-            class="player-card"
-            onclick="openPlayerProfile('${player.id}')"
-            style="cursor:pointer"
-          >
-            <div>
-              <strong>
-                ${player.name}
-              </strong>
-
-              <div>
-                ${player.role}
-                • OVR ${player.rating}
-              </div>
-            </div>
-
-            <div>
-              <small>
-                Form
-                ${Math.round(player.form)}
-              </small>
-
+      ${
+        player.injury
+          ? `
+            <p class="bad">
+              ? ${player.injury.type}
               <br>
+              Recovery:
+              ${player.injury.days} days
+            </p>
+          `
+          : `
+            <p class="good">
+              ? Healthy
+            </p>
+          `
+      }
+
+    </div>
+
+    <button
+      class="primary big"
+      onclick="renewContract('${player.id}')">
+      ? RENEW CONTRACT
+    </button>
+
+    <button
+      class="primary big"
+      onclick="closeModal()">
+      CLOSE
+    </button>
+
+    <button
+      class="big"
+      style="
+        width:100%;
+        margin-top:10px;
+        padding:15px;
+        background:#2a1620;
+        color:#fff;
+        border:0;
+        border-radius:12px;
+      "
+      onclick="releasePlayer('${player.id}')">
+      ? RELEASE PLAYER
+    </button>
+
+  `;
+
+  document
+    .getElementById(
+      "playerModal"
+    )
+    .classList.add("show");
+
+}
+
+
+function closeModal() {
+
+  document
+    .getElementById(
+      "playerModal"
+    )
+    .classList.remove("show");
+
+}
+
+
+/* =========================================================
+   TRANSFER UI
+   ========================================================= */
+
+function renderTransfer() {
+
+  const container =
+    document.getElementById(
+      "transferList"
+    );
+
+  if (!container) return;
+
+  const players =
+    getTransferPlayers();
+
+  container.innerHTML = players
+    .map(item => {
+
+      const p =
+        item.player;
+
+      const price =
+        calculateTransferValue(p);
+
+      return `
+
+        <div class="player-card">
+
+          <div class="player-card-main">
+
+            <div class="player-avatar">
+              ?
+            </div>
+
+            <div class="player-info">
+
+              <h3>
+                ${escapeHtml(p.name)}
+              </h3>
 
               <small>
-                Fit
-                ${Math.round(player.fitness)}
+                ${p.role}
+                ?
+                ${item.team.name}
               </small>
+
             </div>
+
+            <div class="rating">
+              ${p.rating}
+            </div>
+
           </div>
-        `
+
+          <div class="player-meta">
+
+            <span>
+              Age ${p.age}
+            </span>
+
+            <span>
+              POT ${p.potential}
+            </span>
+
+            <span>
+              ${money(price)}
+            </span>
+
+          </div>
+
+          <button
+            class="primary"
+            style="width:100%;margin-top:12px"
+            onclick="
+              makeTransferOffer(
+                getTeam('${item.team.id}'),
+                getPlayer(
+                  getTeam('${item.team.id}'),
+                  '${p.id}'
+                )
+              )
+            ">
+            ? MAKE OFFER
+          </button>
+
+        </div>
+
+      `;
+
+    })
+    .join("");
+
+}
+
+
+/* =========================================================
+   SCOUTING UI
+   ========================================================= */
+
+function renderScouting() {
+
+  const container =
+    document.getElementById(
+      "scoutingList"
+    );
+
+  const role =
+    document.getElementById(
+      "scoutRole"
+    )?.value ||
+    "ALL";
+
+  if (!container) return;
+
+  const players =
+    game.freeAgents
+      .filter(
+        p =>
+          role === "ALL" ||
+          p.role === role
       )
+      .sort(
+        (a, b) =>
+          b.rating - a.rating
+      );
+
+  container.innerHTML =
+    players.map(p => {
+
+      const fee =
+        Math.round(
+          calculateTransferValue(p) * 0.08
+        );
+
+      return `
+
+        <div class="player-card">
+
+          <div class="player-card-main">
+
+            <div class="player-avatar">
+              ?
+            </div>
+
+            <div class="player-info">
+
+              <h3>
+                ${escapeHtml(p.name)}
+              </h3>
+
+              <small>
+                ${p.role}
+                ?
+                Age ${p.age}
+              </small>
+
+            </div>
+
+            <div class="rating">
+              ${p.rating}
+            </div>
+
+          </div>
+
+          <div class="player-meta">
+
+            <span>
+              POT ${p.potential}
+            </span>
+
+            <span>
+              ${money(fee)}
+            </span>
+
+          </div>
+
+          <button
+            class="primary"
+            style="width:100%;margin-top:12px"
+            onclick="
+              signFreeAgent('${p.id}')
+            ">
+            SIGN PLAYER
+          </button>
+
+        </div>
+
+      `;
+
+    }).join("");
+
+}
+
+
+/* =========================================================
+   SCHEDULE UI
+   ========================================================= */
+
+function renderSchedule() {
+
+  const container =
+    document.getElementById(
+      "scheduleList"
+    );
+
+  if (!container) return;
+
+  const upcoming =
+    game.schedule
+      .filter(
+        m =>
+          m.homeId === game.teamId ||
+          m.awayId === game.teamId
+      )
+      .slice()
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date)
+      );
+
+  container.innerHTML =
+    upcoming.map(match => {
+
+      const home =
+        getTeam(match.homeId);
+
+      const away =
+        getTeam(match.awayId);
+
+      const userMatch =
+        !match.played &&
+        (
+          match.homeId === game.teamId ||
+          match.awayId === game.teamId
+        );
+
+      return `
+
+        <div class="
+          match-row
+          ${userMatch ? "playable" : ""}
+        ">
+
+          <div>
+
+            <small>
+              ${formatDate(match.date)}
+            </small>
+
+            <strong>
+              ${escapeHtml(home.name)}
+              vs
+              ${escapeHtml(away.name)}
+            </strong>
+
+          </div>
+
+          <div>
+
+            ${
+              match.played
+                ? `
+                  ${match.result.homeScore}
+                  -
+                  ${match.result.awayScore}
+                `
+                : userMatch
+                  ? `
+                    <button
+                      class="primary"
+                      onclick="
+                        game.date='${match.date}';
+                        openMatch(
+                          game.schedule.find(
+                            m=>m.id==='${match.id}'
+                          )
+                        );
+                      ">
+                      PLAY
+                    </button>
+                  `
+                  : "UPCOMING"
+            }
+
+          </div>
+
+        </div>
+
+      `;
+
+    }).join("");
+
+}
+
+
+/* =========================================================
+   WORLD UI
+   ========================================================= */
+
+function renderWorld() {
+
+  const container =
+    document.getElementById(
+      "worldList"
+    );
+
+  if (!container) return;
+
+  container.innerHTML =
+    game.worldRanking
+      .map(r => `
+
+        <div class="rank-row">
+
+          <strong>
+            #${r.rank}
+          </strong>
+
+          <div>
+
+            <strong>
+              ${escapeHtml(r.teamName)}
+            </strong>
+
+            <small class="muted">
+              Power ${r.power}
+            </small>
+
+          </div>
+
+          <strong>
+            ${r.points}
+          </strong>
+
+        </div>
+
+      `)
       .join("");
+
 }
 
-/* =========================================================
-   OVERRIDE ROSTER
-   ========================================================= */
-
-openRoster = function () {
-  showScreen("rosterScreen");
-
-  renderDetailedRoster();
-};
 
 /* =========================================================
-   TRANSFER / AI DAILY MANAGEMENT
+   TOURNAMENT
    ========================================================= */
 
-function dailyAIManagement() {
-  chooseAllAILineups();
+function renderTournament() {
 
-  game.teams.forEach(team => {
-    if (
-      team.id === game.team.id
-    ) {
-      return;
-    }
+  const container =
+    document.getElementById(
+      "tournamentContent"
+    );
 
-    if (
-      chance(5)
-    ) {
-      aiRenewContracts();
-    }
+  if (!container) return;
 
-    if (
-      transferWindowOpen() &&
-      chance(10)
-    ) {
-      aiSignFreeAgent(team);
-    }
+  const standings =
+    getStandings();
 
-    if (
-      transferWindowOpen() &&
-      chance(5)
-    ) {
-      aiReleasePlayer(team);
-    }
+  container.innerHTML = `
+
+    <div class="panel">
+
+      <h2>? Regional Championship</h2>
+
+      <p class="muted">
+        Posisi liga menentukan seed tournament.
+      </p>
+
+      <div class="stat-grid">
+
+        <div class="stat-box">
+          Your Seed
+          <strong>
+            #${
+              standings.findIndex(
+                t => t.id === game.teamId
+              ) + 1
+            }
+          </strong>
+        </div>
+
+        <div class="stat-box">
+          Team Power
+          <strong>
+            ${Math.round(
+              teamPower(getUserTeam())
+            )}
+          </strong>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="panel">
+
+      <h3>MSC Qualification</h3>
+
+      <p>
+        Finish Top 3 untuk membuka peluang
+        masuk tournament internasional.
+      </p>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   HISTORY UI
+   ========================================================= */
+
+function renderHistory() {
+
+  const container =
+    document.getElementById(
+      "historyList"
+    );
+
+  if (!container) return;
+
+  if (!game.history.length) {
+
+    container.innerHTML = `
+
+      <div class="panel">
+        Belum ada sejarah musim.
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+  container.innerHTML =
+    game.history.map(h => `
+
+      <div class="panel">
+
+        <h3>
+          Season ${h.year}
+        </h3>
+
+        <p>
+          ${escapeHtml(h.teamName)}
+        </p>
+
+        <p>
+          Finish:
+          <strong>
+            #${h.position}
+          </strong>
+        </p>
+
+        <p>
+          Champion:
+          ${escapeHtml(h.champion)}
+        </p>
+
+        <p>
+          Record:
+          ${h.wins}W -
+          ${h.losses}L
+        </p>
+
+        <p>
+          Target:
+          ${
+            h.targetSuccess
+              ? "? Success"
+              : "? Failed"
+          }
+        </p>
+
+      </div>
+
+    `).join("");
+
+}
+
+
+/* =========================================================
+   NEWS / INBOX
+   ========================================================= */
+
+function addNews(title, message) {
+
+  if (!game) return;
+
+  game.inbox.unshift({
+
+    id: uid("mail"),
+
+    date: game.date,
+
+    title,
+
+    message,
+
+    read: false
+
   });
+
+  game.news.unshift({
+
+    date: game.date,
+
+    title,
+
+    message
+
+  });
+
+  game.inbox =
+    game.inbox.slice(0, 50);
+
+  game.news =
+    game.news.slice(0, 50);
+
 }
+
+
+function showInbox() {
+
+  const container =
+    document.getElementById(
+      "inboxList"
+    );
+
+  container.innerHTML =
+    game.inbox.map(mail => `
+
+      <div class="news-card">
+
+        <small>
+          ${formatDate(mail.date)}
+        </small>
+
+        <h3>
+          ${escapeHtml(mail.title)}
+        </h3>
+
+        <p>
+          ${escapeHtml(mail.message)}
+        </p>
+
+      </div>
+
+    `).join("");
+
+  document
+    .getElementById(
+      "inboxModal"
+    )
+    .classList.add("show");
+
+}
+
+
+function closeInbox() {
+
+  document
+    .getElementById(
+      "inboxModal"
+    )
+    .classList.remove("show");
+
+}
+
 
 /* =========================================================
-   FINANCIAL SAFETY
+   SAVE / LOAD
    ========================================================= */
 
-function syncUserBudget() {
-  if (!game.team) return;
+function saveGame() {
 
-  game.team.budget =
-    game.budget;
-}
-
-function syncTeamBudget() {
-  if (!game.team) return;
-
-  game.budget =
-    game.team.budget;
-}
-
-/* =========================================================
-   SAVE OVERRIDE
-   ========================================================= */
-
-const originalSaveGame =
-  saveGame;
-
-saveGame = function (
-  showMessage = true
-) {
-  syncUserBudget();
+  if (!game) return;
 
   try {
+
     localStorage.setItem(
       SAVE_KEY,
       JSON.stringify(game)
     );
 
-    if (showMessage) {
-      alert(
-        "💾 Career V1.3 berhasil disimpan."
-      );
-    }
   } catch (error) {
+
     console.error(
-      "SAVE ERROR:",
+      "Save failed:",
       error
     );
 
-    alert(
-      "Gagal menyimpan career."
-    );
   }
-};
+
+}
+
+
+function normalizeLoadedPlayer(p) {
+
+  return createPlayer({
+
+    ...p,
+
+    role:
+      normalizeRole(p.role),
+
+    rating:
+      Number(p.rating || 70),
+
+    potential:
+      Number(
+        p.potential ||
+        Number(p.rating || 70) + 10
+      )
+
+  });
+
+}
+
+
+function migrateGame(data) {
+
+  if (!data) return null;
+
+  data.version = "1.5";
+
+  data.teams =
+    (data.teams || []).map(team => {
+
+      team.players =
+        (team.players || [])
+          .map(normalizeLoadedPlayer);
+
+      team.chemistry =
+        Number(
+          team.chemistry || 70
+        );
+
+      team.standings =
+        team.standings || {
+
+          played: 0,
+
+          wins: 0,
+
+          losses: 0,
+
+          points: 0,
+
+          gameWins: 0,
+
+          gameLosses: 0
+
+        };
+
+      team.seasonStats =
+        team.seasonStats || {
+
+          matches: 0,
+
+          wins: 0,
+
+          losses: 0
+
+        };
+
+      return team;
+
+    });
+
+  data.freeAgents =
+    (data.freeAgents || [])
+      .map(normalizeLoadedPlayer);
+
+  data.inbox =
+    data.inbox || [];
+
+  data.news =
+    data.news || [];
+
+  data.history =
+    data.history || [];
+
+  data.worldRanking =
+    data.worldRanking || [];
+
+  data.rivals =
+    data.rivals || [];
+
+  return data;
+
+}
+
+
+function loadGame() {
+
+  try {
+
+    const raw =
+      localStorage.getItem(
+        SAVE_KEY
+      );
+
+    if (!raw) return false;
+
+    const parsed =
+      JSON.parse(raw);
+
+    game =
+      migrateGame(parsed);
+
+    if (!game) return false;
+
+    syncUserTeam();
+
+    updateWorldRanking();
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      "Load failed:",
+      error
+    );
+
+    return false;
+
+  }
+
+}
+
 
 /* =========================================================
-   RESTART OVERRIDE
+   RESET
    ========================================================= */
 
-const originalRestartGame =
-  restartGame;
+function resetGame() {
 
-restartGame = function () {
-  const ok =
+  const yes =
     confirm(
-      "Hapus career V1.3 dan mulai dari awal?"
+      "Reset career?\nSemua progress akan hilang."
     );
 
-  if (!ok) return;
+  if (!yes) return;
 
   localStorage.removeItem(
     SAVE_KEY
   );
 
-  OLD_SAVE_KEYS.forEach(
-    key =>
-      localStorage.removeItem(key)
-  );
+  game = null;
 
-  game =
-    createDefaultGame();
+  selectedCountry = null;
 
-  selectedTarget =
-    "top3";
+  selectedLeagueId = null;
 
-  injectV13Styles();
+  selectedTeamId = null;
 
-  renderCountries();
-};
+  location.reload();
+
+}
+
 
 /* =========================================================
-   START CAREER OVERRIDE
+   DEBUG
    ========================================================= */
 
-const originalStartCareer =
-  startCareer;
+window.MLBB_PM = {
 
-startCareer = function () {
-  originalStartCareer();
+  getGame: () => game,
+
+  save: saveGame,
+
+  reset: resetGame,
+
+  advance: advanceDay,
+
+  rank: () => {
+
+    updateWorldRanking();
+
+    return game?.worldRanking;
+
+  },
+
+  lineup: () => {
+
+    const team =
+      getUserTeam();
+
+    return chooseBestLineup(team);
+
+  }
+
+};
+
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+
+function boot() {
 
   if (
-    game &&
-    game.team
+    typeof countries === "undefined"
   ) {
-    game.team.budget =
-      game.budget;
 
-    chooseBestLineup(
-      game.team
-    );
-
-    initializeFreeAgents();
-    initializeWorldRanking();
-
-    saveGame(false);
-  }
-};
-
-/* =========================================================
-   SELECT TEAM OVERRIDE
-   ========================================================= */
-
-const originalSelectTeam =
-  selectTeam;
-
-selectTeam = function (
-  teamId
-) {
-  game.selectedTeam =
-    teamId;
-
-  const setup =
-    document.getElementById(
-      "managerSetupScreen"
-    );
-
-  if (setup) {
-    showScreen(
-      "managerSetupScreen"
-    );
-  }
-};
-
-/* =========================================================
-   MATCH NAVIGATION SAFETY
-   ========================================================= */
-
-function openNextUserMatch() {
-  const match =
-    game.schedule.find(
-      m =>
-        !m.played &&
-        (
-          m.home === game.team.id ||
-          m.away === game.team.id
-        )
-    );
-
-  if (!match) {
     alert(
-      "Tidak ada match tersisa."
+      "countries.js belum termuat."
     );
+
     return;
+
   }
 
   if (
-    new Date(match.date) >
-    new Date(game.date)
+    typeof MPL_ID_2026 === "undefined"
   ) {
-    game.date =
-      match.date;
-  }
 
-  openMatch(match.id);
-}
-
-/* =========================================================
-   FIX AI MATCH RESULT SCREEN
-   ========================================================= */
-
-const originalSimulateCurrentMatch =
-  simulateCurrentMatch;
-
-function simulateMatchSilently(match) {
-  const oldCurrent =
-    game.currentMatch;
-
-  game.currentMatch =
-    match;
-
-  const home =
-    game.teams.find(
-      t => t.id === match.home
+    alert(
+      "mpl_data.js belum termuat."
     );
 
-  const away =
-    game.teams.find(
-      t => t.id === match.away
-    );
-
-  if (!home || !away) {
-    game.currentMatch =
-      oldCurrent;
     return;
+
   }
 
-  chooseBestLineup(home);
-  chooseBestLineup(away);
-
-  let hp =
-    calculateTeamPower(home) +
-    2.5 +
-    managerMatchBonus(home);
-
-  let ap =
-    calculateTeamPower(away) +
-    managerMatchBonus(away);
-
-  hp +=
-    rivalryBonus(
-      home,
-      away
-    );
-
-  hp += randFloat(-5, 5);
-  ap += randFloat(-5, 5);
-
-  const need =
-    Math.ceil(
-      match.bestOf / 2
-    );
-
-  let hs = 0;
-  let as = 0;
-
-  const homeStats = [];
-  const awayStats = [];
-
-  while (
-    hs < need &&
-    as < need
-  ) {
-    if (
-      hp + randFloat(-7, 7) >=
-      ap + randFloat(-7, 7)
-    ) {
-      hs++;
-
-      homeStats.push(
-        createGamePlayerStats(
-          getStartingPlayers(home),
-          true
-        )
-      );
-
-      awayStats.push(
-        createGamePlayerStats(
-          getStartingPlayers(away),
-          false
-        )
-      );
-    } else {
-      as++;
-
-      homeStats.push(
-        createGamePlayerStats(
-          getStartingPlayers(home),
-          false
-        )
-      );
-
-      awayStats.push(
-        createGamePlayerStats(
-          getStartingPlayers(away),
-          true
-        )
-      );
-    }
-  }
-
-  const winner =
-    hs > as
-      ? home
-      : away;
-
-  const loser =
-    winner.id === home.id
-      ? away
-      : home;
-
-  match.homeScore = hs;
-  match.awayScore = as;
-  match.winner = winner.id;
-  match.played = true;
-
-  applyTeamMatchResult(
-    winner,
-    loser,
-    winner.id === home.id,
-    match
-  );
-
-  applyPlayerMatchStats(
-    home,
-    away,
-    homeStats,
-    awayStats,
-    hs,
-    as
-  );
-
-  applyMatchFatigue(home);
-  applyMatchFatigue(away);
-
-  checkInjuries(home);
-  checkInjuries(away);
-
-  updateWorldRankingMatch(
-    winner,
-    loser,
-    match.phase !== "regular"
-  );
-
-  game.seasonStats.matches++;
-
-  if (
-    winner.id === game.team.id
-  ) {
-    game.seasonStats.wins++;
-  }
-
-  if (
-    loser.id === game.team.id
-  ) {
-    game.seasonStats.losses++;
-  }
-
-  game.currentMatch =
-    oldCurrent;
-}
-
-/* =========================================================
-   REPLACE AI SIMULATION
-   ========================================================= */
-
-simulateAIMatches = function () {
-  const matches =
-    game.schedule.filter(
-      m =>
-        !m.played &&
-        m.date <= game.date
-    );
-
-  matches.forEach(match => {
-    if (
-      match.home === game.team.id ||
-      match.away === game.team.id
-    ) {
-      return;
-    }
-
-    simulateMatchSilently(
-      match
-    );
-  });
-
-  checkSeasonProgress();
-};
-
-/* =========================================================
-   FINAL ADVANCE DAY
-   ========================================================= */
-
-advanceDay = function () {
-  if (!game || !game.team) return;
-
-  game.date =
-    addDays(
-      game.date,
-      1
-    );
-
-  recoverPlayers();
-
-  updateAllPlayerForms();
-
-  dailyAIManagement();
-
-  simulateAIMatches();
-
-  checkInjuries(
-    game.team
-  );
-
-  if (
-    new Date(game.date).getDate() === 1
-  ) {
-    processMonthlyFinance();
-  }
-
-  if (
-    transferWindowOpen()
-  ) {
-    processAITransfers();
-  }
-
-  chooseAllAILineups();
-
-  checkSeasonProgress();
-
-  renderDashboard();
-
-  saveGame(false);
-};
-
-/* =========================================================
-   CURRENT MATCH BUTTON
-   ========================================================= */
-
-playNextMatch = function () {
-  const match =
-    game.schedule.find(
-      m =>
-        !m.played &&
-        (
-          m.home === game.team.id ||
-          m.away === game.team.id
-        )
-    );
-
-  if (!match) {
-    checkSeasonProgress();
-    renderDashboard();
-    return;
-  }
-
-  if (
-    new Date(match.date) >
-    new Date(game.date)
-  ) {
-    game.date =
-      match.date;
-  }
-
-  openMatch(
-    match.id
-  );
-};
-
-/* =========================================================
-   SCHEDULE SAFETY
-   ========================================================= */
-
-function getNextUserMatch() {
-  return game.schedule
-    .filter(
-      m =>
-        !m.played &&
-        (
-          m.home === game.team.id ||
-          m.away === game.team.id
-        )
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.date) -
-        new Date(b.date)
-    )[0] || null;
-}
-
-/* =========================================================
-   INITIAL LOAD
-   ========================================================= */
-
-function bootV13() {
-  injectV13Styles();
-
-  if (!game) {
-    game =
-      createDefaultGame();
-  }
-
-  const loaded =
-    loadGame();
-
-  if (loaded && game.team) {
-    syncTeamBudget();
-
-    initializeFreeAgents();
-
-    if (
-      !game.worldRanking.length
-    ) {
-      initializeWorldRanking();
-    }
-
-    initializeAIManagers();
-
-    chooseAllAILineups();
+  if (loadGame()) {
 
     renderDashboard();
+
+    showDashboard();
+
+  } else {
+
+    renderCountries();
 
     showScreen(
-      "dashboardScreen"
+      "countryScreen"
     );
 
-    saveGame(false);
-
-    return;
   }
 
-  renderCountries();
 }
 
-/* =========================================================
-   DOM READY
-   ========================================================= */
 
 document.addEventListener(
   "DOMContentLoaded",
-  () => {
-    bootV13();
-  }
+  boot
 );
-
-/* =========================================================
-   FALLBACK
-   ========================================================= */
-
-if (
-  document.readyState !==
-  "loading"
-) {
-  setTimeout(
-    () => {
-      if (
-        !game ||
-        !game.team
-      ) {
-        bootV13();
-      }
-    },
-    100
-  );
-}
-
-/* =========================================================
-   END V1.3
-   ========================================================= */
