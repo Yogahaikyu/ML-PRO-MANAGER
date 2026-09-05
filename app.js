@@ -1,14 +1,23 @@
 /* =========================================================
    MLBB PRO MANAGER
-   V0.4
-   MATCH SCREEN + BO3
+   V0.4 FIXED
 ========================================================= */
 
-let leagues = [
+
+/* =========================================================
+   LEAGUES
+========================================================= */
+
+const leagues = [
   MPL_ID_2026,
   MPL_PH_2026,
   MPL_KH_2026
 ];
+
+
+/* =========================================================
+   GAME STATE
+========================================================= */
 
 let game = {
 
@@ -29,49 +38,8 @@ let game = {
   starters: [],
 
   careerStarted: false
+
 };
-
-
-/* =========================================================
-   SAVE / LOAD
-========================================================= */
-
-function saveGame() {
-
-  localStorage.setItem(
-    "mlbb_pro_manager_save",
-    JSON.stringify(game)
-  );
-
-}
-
-
-function loadGame() {
-
-  const save = localStorage.getItem(
-    "mlbb_pro_manager_save"
-  );
-
-  if (!save) return;
-
-  try {
-
-    game = JSON.parse(save);
-
-    if (game.careerStarted) {
-
-      renderDashboard();
-      showScreen("dashboardScreen");
-
-    }
-
-  } catch (error) {
-
-    console.log("Save corrupt");
-
-  }
-
-}
 
 
 /* =========================================================
@@ -88,20 +56,130 @@ function showScreen(id) {
 
     });
 
-  const target = document.getElementById(id);
+  const target =
+    document.getElementById(id);
 
   if (target) {
+
     target.classList.remove("hidden");
+
   }
 
 }
 
 
-function backToDashboard() {
+/* =========================================================
+   SAVE
+========================================================= */
 
-  showScreen("dashboardScreen");
+function saveGame() {
 
-  renderDashboard();
+  localStorage.setItem(
+    "mlbb_pro_manager_save",
+    JSON.stringify(game)
+  );
+
+}
+
+
+/* =========================================================
+   LOAD
+========================================================= */
+
+function loadGame() {
+
+  const saved =
+    localStorage.getItem(
+      "mlbb_pro_manager_save"
+    );
+
+  if (!saved) return;
+
+  try {
+
+    const data =
+      JSON.parse(saved);
+
+    game = data;
+
+    /*
+      Reconnect saved objects
+      with current data.
+    */
+
+    if (game.country) {
+
+      const countryId =
+        game.country.id;
+
+      game.country =
+        countries.find(
+          country =>
+            country.id === countryId
+        ) || null;
+
+    }
+
+    if (game.country && game.league) {
+
+      const leagueId =
+        game.league.id;
+
+      game.league =
+        leagues.find(
+          league =>
+            league.id === leagueId
+        ) || null;
+
+    }
+
+    if (game.league && game.team) {
+
+      const teamId =
+        game.team.id;
+
+      game.team =
+        game.league.teams.find(
+          team =>
+            team.id === teamId
+        ) || null;
+
+    }
+
+    if (!Array.isArray(game.starters)) {
+      game.starters = [];
+    }
+
+    if (!Array.isArray(game.schedule)) {
+      game.schedule = [];
+    }
+
+    if (!Array.isArray(game.standings)) {
+      game.standings = [];
+    }
+
+    if (game.careerStarted && game.team) {
+
+      renderDashboard();
+
+      showScreen(
+        "dashboardScreen"
+      );
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Save game error:",
+      error
+    );
+
+    localStorage.removeItem(
+      "mlbb_pro_manager_save"
+    );
+
+  }
 
 }
 
@@ -113,7 +191,9 @@ function backToDashboard() {
 function renderCountries() {
 
   const container =
-    document.getElementById("countryList");
+    document.getElementById(
+      "countryList"
+    );
 
   if (!container) return;
 
@@ -124,14 +204,33 @@ function renderCountries() {
     const button =
       document.createElement("button");
 
-    button.className = "country-card";
+    button.className =
+      "country-card";
 
     button.innerHTML = `
-      <strong>${country.name}</strong>
+
+      <div>
+
+        <strong>
+          ${country.name}
+        </strong>
+
+        <div class="card-right">
+          ${country.leagues.length} League
+        </div>
+
+      </div>
+
+      <div class="country-flag">
+        ${country.flag}
+      </div>
+
     `;
 
     button.onclick = () =>
-      selectCountry(country.id);
+      selectCountry(
+        country.id
+      );
 
     container.appendChild(button);
 
@@ -140,18 +239,30 @@ function renderCountries() {
 }
 
 
+/* =========================================================
+   SELECT COUNTRY
+========================================================= */
+
 function selectCountry(countryId) {
 
   const country =
-    countries.find(c => c.id === countryId);
+    countries.find(
+      country =>
+        country.id === countryId
+    );
 
   if (!country) return;
 
   game.country = country;
 
+  game.league = null;
+  game.team = null;
+
   renderLeagues();
 
-  showScreen("leagueScreen");
+  showScreen(
+    "leagueScreen"
+  );
 
 }
 
@@ -163,28 +274,77 @@ function selectCountry(countryId) {
 function renderLeagues() {
 
   const container =
-    document.getElementById("leagueList");
+    document.getElementById(
+      "leagueList"
+    );
 
   if (!container) return;
 
   container.innerHTML = "";
 
+  if (!game.country) return;
+
+  /*
+    FIX:
+    Data liga menggunakan region,
+    bukan country.
+  */
+
   const available =
     leagues.filter(
       league =>
-        league.country === game.country.id
+        league.region ===
+        game.country.id.toUpperCase()
     );
+
+  if (!available.length) {
+
+    container.innerHTML = `
+
+      <div class="game-card">
+
+        <h3>
+          No League Available
+        </h3>
+
+        <p>
+          Belum ada liga untuk negara ini.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+
+  }
 
   available.forEach(league => {
 
     const button =
       document.createElement("button");
 
-    button.className = "league-card";
+    button.className =
+      "league-card";
 
     button.innerHTML = `
-      <strong>${league.name}</strong>
-      <span>${league.teams.length} Teams</span>
+
+      <div>
+
+        <strong>
+          ${league.name}
+        </strong>
+
+        <div class="card-right">
+          Season ${league.season}
+        </div>
+
+      </div>
+
+      <span class="card-right">
+        ${league.teams.length} Teams →
+      </span>
+
     `;
 
     button.onclick = () =>
@@ -197,13 +357,23 @@ function renderLeagues() {
 }
 
 
+/* =========================================================
+   SELECT LEAGUE
+========================================================= */
+
 function selectLeague(league) {
+
+  if (!league) return;
 
   game.league = league;
 
+  game.team = null;
+
   renderTeams();
 
-  showScreen("teamScreen");
+  showScreen(
+    "teamScreen"
+  );
 
 }
 
@@ -215,22 +385,42 @@ function selectLeague(league) {
 function renderTeams() {
 
   const container =
-    document.getElementById("teamList");
+    document.getElementById(
+      "teamList"
+    );
 
   if (!container) return;
 
   container.innerHTML = "";
+
+  if (!game.league) return;
 
   game.league.teams.forEach(team => {
 
     const button =
       document.createElement("button");
 
-    button.className = "team-card";
+    button.className =
+      "team-card";
 
     button.innerHTML = `
-      <strong>${team.name}</strong>
-      <span>${team.players.length} Players</span>
+
+      <div>
+
+        <strong>
+          ${team.name}
+        </strong>
+
+        <div class="card-right">
+          ${team.short}
+        </div>
+
+      </div>
+
+      <span class="card-right">
+        ${team.players.length} Players →
+      </span>
+
     `;
 
     button.onclick = () =>
@@ -243,11 +433,20 @@ function renderTeams() {
 }
 
 
+/* =========================================================
+   SELECT TEAM
+========================================================= */
+
 function selectTeam(team) {
+
+  if (!team) return;
 
   game.team = team;
 
   game.careerStarted = true;
+
+  game.budget = 500000;
+  game.reputation = 50;
 
   createStarters();
 
@@ -255,11 +454,15 @@ function selectTeam(team) {
 
   createSeasonSchedule();
 
+  game.currentMatch = null;
+
   saveGame();
 
   renderDashboard();
 
-  showScreen("dashboardScreen");
+  showScreen(
+    "dashboardScreen"
+  );
 
 }
 
@@ -275,6 +478,10 @@ function createStarters() {
   const players =
     [...game.team.players];
 
+  /*
+    Pilih pemain terbaik.
+  */
+
   players.sort(
     (a, b) =>
       (b.rating || 0) -
@@ -284,18 +491,24 @@ function createStarters() {
   game.starters =
     players
       .slice(0, 5)
-      .map(player => player.id);
+      .map(
+        player =>
+          player.id
+      );
 
 }
 
 
 function getStarters() {
 
-  if (!game.team) return [];
+  if (!game.team)
+    return [];
 
   return game.team.players.filter(
     player =>
-      game.starters.includes(player.id)
+      game.starters.includes(
+        player.id
+      )
   );
 
 }
@@ -304,25 +517,34 @@ function getStarters() {
 function toggleStarter(playerId) {
 
   if (
-    game.starters.includes(playerId)
+    game.starters.includes(
+      playerId
+    )
   ) {
 
     game.starters =
       game.starters.filter(
-        id => id !== playerId
+        id =>
+          id !== playerId
       );
 
   } else {
 
-    if (game.starters.length >= 5) {
+    if (
+      game.starters.length >= 5
+    ) {
 
-      alert("Starting 5 sudah penuh.");
+      alert(
+        "Starting 5 sudah penuh."
+      );
 
       return;
 
     }
 
-    game.starters.push(playerId);
+    game.starters.push(
+      playerId
+    );
 
   }
 
@@ -341,35 +563,47 @@ function calculateTeamRating(team) {
 
   if (!team) return 0;
 
-  const players =
-    team === game.team
-      ? getStarters()
-      : team.players
-          .slice()
-          .sort(
-            (a, b) =>
-              (b.rating || 0) -
-              (a.rating || 0)
-          )
-          .slice(0, 5);
+  let players;
 
-  if (!players.length) return 0;
+  if (team === game.team) {
+
+    players =
+      getStarters();
+
+  } else {
+
+    players =
+      [...team.players]
+        .sort(
+          (a, b) =>
+            (b.rating || 0) -
+            (a.rating || 0)
+        )
+        .slice(0, 5);
+
+  }
+
+  if (!players.length)
+    return 0;
 
   const average =
     players.reduce(
       (sum, player) =>
-        sum + (player.rating || 0),
+        sum +
+        (player.rating || 0),
       0
-    ) / players.length;
+    ) /
+    players.length;
 
   const roles =
     new Set(
       players.map(
-        player => player.role
+        player =>
+          player.role
       )
     );
 
-  let bonus = 0;
+  let bonus;
 
   if (roles.size >= 5) {
 
@@ -404,10 +638,12 @@ function calculateWinProbability(
 ) {
 
   const difference =
-    myRating - enemyRating;
+    myRating -
+    enemyRating;
 
   let probability =
-    50 + difference * 2;
+    50 +
+    difference * 2;
 
   probability =
     Math.max(
@@ -418,7 +654,9 @@ function calculateWinProbability(
       )
     );
 
-  return Math.round(probability);
+  return Math.round(
+    probability
+  );
 
 }
 
@@ -429,40 +667,50 @@ function calculateWinProbability(
 
 function createSeasonSchedule() {
 
-  if (!game.league || !game.team)
-    return;
+  if (
+    !game.league ||
+    !game.team
+  ) return;
 
   game.schedule = [];
 
-  game.league.teams.forEach(team => {
+  game.league.teams.forEach(
+    team => {
 
-    if (
-      team.id === game.team.id
-    ) return;
+      if (
+        team.id ===
+        game.team.id
+      ) return;
 
-    game.schedule.push({
+      game.schedule.push({
 
-      opponentId: team.id,
+        opponentId:
+          team.id,
 
-      played: false,
+        played: false,
 
-      result: null,
+        result: null,
 
-      myGames: 0,
+        myGames: 0,
 
-      opponentGames: 0
+        opponentGames: 0
 
-    });
+      });
 
-  });
+    }
+  );
 
 }
 
 
 function getTeamById(id) {
 
+  if (!game.league)
+    return null;
+
   return game.league.teams.find(
-    team => team.id === id
+    team =>
+      team.id === id
   );
 
 }
@@ -471,14 +719,15 @@ function getTeamById(id) {
 function getNextMatch() {
 
   return game.schedule.find(
-    match => !match.played
+    match =>
+      !match.played
   );
 
 }
 
 
 /* =========================================================
-   OPEN MATCH SCREEN
+   OPEN MATCH
 ========================================================= */
 
 function openNextMatch() {
@@ -506,11 +755,14 @@ function openNextMatch() {
 
   }
 
-  game.currentMatch = match;
+  game.currentMatch =
+    match;
 
   renderMatchScreen();
 
-  showScreen("matchScreen");
+  showScreen(
+    "matchScreen"
+  );
 
 }
 
@@ -581,11 +833,18 @@ function renderMatchScreen() {
       "matchResult"
     );
 
-  result.classList.add("hidden");
+  result.className =
+    "hidden";
 
-  document.getElementById(
-    "playMatchButton"
-  ).disabled = false;
+  result.innerHTML = "";
+
+  const playButton =
+    document.getElementById(
+      "playMatchButton"
+    );
+
+  playButton.disabled =
+    false;
 
 }
 
@@ -605,38 +864,43 @@ function renderMatchStarters() {
 
   container.innerHTML = "";
 
-  const players =
-    getStarters();
+  getStarters().forEach(
+    player => {
 
-  players.forEach(player => {
+      const div =
+        document.createElement(
+          "div"
+        );
 
-    const div =
-      document.createElement("div");
+      div.className =
+        "match-player";
 
-    div.className =
-      "match-player";
+      div.innerHTML = `
 
-    div.innerHTML = `
+        <div>
 
-      <div>
+          <strong>
+            ${player.name}
+          </strong>
+
+          <div class="match-player-role">
+            ${player.role}
+          </div>
+
+        </div>
+
         <strong>
-          ${player.name}
+          ${player.rating}
         </strong>
 
-        <div class="match-player-role">
-          ${player.role}
-        </div>
-      </div>
+      `;
 
-      <strong>
-        ${player.rating}
-      </strong>
+      container.appendChild(
+        div
+      );
 
-    `;
-
-    container.appendChild(div);
-
-  });
+    }
+  );
 
 }
 
@@ -652,11 +916,19 @@ function simulateCurrentMatch() {
 
   if (!match) return;
 
-  if (game.starters.length !== 5) {
+  if (
+    game.starters.length !== 5
+  ) {
 
     alert(
       "Pilih tepat 5 pemain sebagai Starting 5."
     );
+
+    return;
+
+  }
+
+  if (match.played) {
 
     return;
 
@@ -696,7 +968,9 @@ function simulateCurrentMatch() {
 
   if (won) {
 
-    if (Math.random() < 0.58) {
+    if (
+      Math.random() < 0.58
+    ) {
 
       myGames = 2;
       enemyGames = 0;
@@ -710,7 +984,9 @@ function simulateCurrentMatch() {
 
   } else {
 
-    if (Math.random() < 0.58) {
+    if (
+      Math.random() < 0.58
+    ) {
 
       myGames = 0;
       enemyGames = 2;
@@ -726,13 +1002,16 @@ function simulateCurrentMatch() {
 
   match.played = true;
 
-  match.myGames = myGames;
+  match.myGames =
+    myGames;
 
   match.opponentGames =
     enemyGames;
 
   match.result =
-    won ? "WIN" : "LOSS";
+    won
+      ? "WIN"
+      : "LOSS";
 
   updateStandings(
     game.team.id,
@@ -784,10 +1063,6 @@ function showMatchResult(
       "matchResult"
     );
 
-  result.classList.remove(
-    "hidden"
-  );
-
   result.className =
     `match-result ${
       won
@@ -798,9 +1073,11 @@ function showMatchResult(
   result.innerHTML = `
 
     <h2>
-      ${won
-        ? "🏆 VICTORY"
-        : "💀 DEFEAT"}
+      ${
+        won
+          ? "🏆 VICTORY"
+          : "💀 DEFEAT"
+      }
     </h2>
 
     <p>
@@ -814,22 +1091,27 @@ function showMatchResult(
     </div>
 
     <p>
-      ${won
-        ? "Kamu mendapatkan 3 poin!"
-        : "Belum berhasil mendapatkan poin."}
+      ${
+        won
+          ? "Kamu mendapatkan 3 poin!"
+          : "Belum berhasil mendapatkan poin."
+      }
     </p>
 
     <button
       class="primary-button"
-      onclick="finishMatch()">
+      onclick="finishMatch()"
+    >
       CONTINUE
     </button>
 
   `;
 
-  document.getElementById(
-    "playMatchButton"
-  ).disabled = true;
+  document
+    .getElementById(
+      "playMatchButton"
+    )
+    .disabled = true;
 
 }
 
@@ -859,13 +1141,15 @@ function finishMatch() {
 
 function createStandings() {
 
-  if (!game.league) return;
+  if (!game.league)
+    return;
 
   game.standings =
     game.league.teams.map(
       team => ({
 
-        teamId: team.id,
+        teamId:
+          team.id,
 
         played: 0,
 
@@ -895,24 +1179,26 @@ function updateStandings(
 
   const mine =
     game.standings.find(
-      s =>
-        s.teamId === myTeamId
+      standing =>
+        standing.teamId ===
+        myTeamId
     );
 
   const enemy =
     game.standings.find(
-      s =>
-        s.teamId === opponentId
+      standing =>
+        standing.teamId ===
+        opponentId
     );
 
   if (!mine || !enemy)
     return;
 
   mine.played++;
-
   enemy.played++;
 
-  mine.gameWins += myGames;
+  mine.gameWins +=
+    myGames;
 
   mine.gameLosses +=
     opponentGames;
@@ -926,7 +1212,6 @@ function updateStandings(
   if (won) {
 
     mine.wins++;
-
     mine.points += 3;
 
     enemy.losses++;
@@ -934,7 +1219,6 @@ function updateStandings(
   } else {
 
     enemy.wins++;
-
     enemy.points += 3;
 
     mine.losses++;
@@ -1020,7 +1304,7 @@ function updateDashboard() {
 
 
 /* =========================================================
-   NEXT MATCH DASHBOARD
+   NEXT MATCH
 ========================================================= */
 
 function renderNextMatch() {
@@ -1047,7 +1331,8 @@ function renderNextMatch() {
         </h3>
 
         <p>
-          Semua pertandingan sudah dimainkan.
+          Semua pertandingan musim ini
+          sudah dimainkan.
         </p>
 
       </div>
@@ -1063,23 +1348,30 @@ function renderNextMatch() {
       match.opponentId
     );
 
+  if (!opponent)
+    return;
+
   container.innerHTML = `
 
     <div class="game-card">
 
       <h3>
         ${game.team.name}
-        vs
+        <br>
+        VS
+        <br>
         ${opponent.name}
       </h3>
 
       <p>
-        BO3
+        BO3 • Regular Season
       </p>
 
       <button
         class="primary-button"
-        onclick="openNextMatch()">
+        onclick="openNextMatch()"
+        style="margin-top:15px;"
+      >
         OPEN MATCH
       </button>
 
@@ -1101,7 +1393,8 @@ function renderRoster() {
       "rosterContainer"
     );
 
-  if (!container)
+  if (!container ||
+      !game.team)
     return;
 
   container.innerHTML = "";
@@ -1115,7 +1408,9 @@ function renderRoster() {
         );
 
       const div =
-        document.createElement("div");
+        document.createElement(
+          "div"
+        );
 
       div.className =
         "match-player";
@@ -1130,28 +1425,36 @@ function renderRoster() {
 
           <div class="match-player-role">
             ${player.role}
+            • Age ${player.age}
           </div>
 
         </div>
 
-        <div>
+        <div style="text-align:right;">
 
           <strong>
             ${player.rating}
           </strong>
 
+          <br>
+
           <button
-            onclick="toggleStarter('${player.id}')">
-            ${selected
-              ? "STARTER"
-              : "SUB"}
+            onclick="toggleStarter('${player.id}')"
+          >
+            ${
+              selected
+                ? "STARTER"
+                : "SUB"
+            }
           </button>
 
         </div>
 
       `;
 
-      container.appendChild(div);
+      container.appendChild(
+        div
+      );
 
     }
   );
@@ -1176,17 +1479,28 @@ function renderStandings() {
   const sorted =
     [...game.standings]
       .sort(
-        (a, b) =>
-          b.points - a.points ||
-          b.wins - a.wins ||
-          (
-            b.gameWins -
-            b.gameLosses
-          ) -
-          (
+        (a, b) => {
+
+          const aDiff =
             a.gameWins -
-            a.gameLosses
-          )
+            a.gameLosses;
+
+          const bDiff =
+            b.gameWins -
+            b.gameLosses;
+
+          return (
+            b.points -
+              a.points ||
+
+            b.wins -
+              a.wins ||
+
+            bDiff -
+              aDiff
+          );
+
+        }
       );
 
   container.innerHTML = "";
@@ -1199,8 +1513,12 @@ function renderStandings() {
           standing.teamId
         );
 
+      if (!team) return;
+
       const div =
-        document.createElement("div");
+        document.createElement(
+          "div"
+        );
 
       div.className =
         "match-player";
@@ -1211,23 +1529,32 @@ function renderStandings() {
 
           <strong>
             #${index + 1}
-            ${team.name}
+            ${team.short}
           </strong>
 
           <div class="match-player-role">
+
             ${standing.wins}W -
             ${standing.losses}L
+
+            •
+            ${standing.gameWins}-
+            ${standing.gameLosses}
+
           </div>
 
         </div>
 
         <strong>
-          ${standing.points} PTS
+          ${standing.points}
+          PTS
         </strong>
 
       `;
 
-      container.appendChild(div);
+      container.appendChild(
+        div
+      );
 
     }
   );
@@ -1262,6 +1589,8 @@ function showSchedule() {
           match.opponentId
         );
 
+      if (!opponent) return;
+
       text +=
         `${index + 1}. ` +
         `${opponent.name} - ` +
@@ -1281,83 +1610,27 @@ function showSchedule() {
 
 
 /* =========================================================
-   TRANSFER / SCOUTING
+   TRANSFER
 ========================================================= */
 
 function showTransferMarket() {
 
   alert(
-    "Transfer Market akan dibuat di V0.5."
-  );
-
-}
-
-
-function showScouting() {
-
-  alert(
-    "Scouting System akan dibuat di V0.5."
+    "Transfer Market akan hadir di V0.5."
   );
 
 }
 
 
 /* =========================================================
-   MENU
+   SCOUTING
 ========================================================= */
 
-function setupMenu() {
+function showScouting() {
 
-  const roster =
-    document.getElementById(
-      "menuRoster"
-    );
-
-  if (roster) {
-
-    roster.onclick = () => {
-
-      renderRoster();
-
-    };
-
-  }
-
-  const schedule =
-    document.getElementById(
-      "menuSchedule"
-    );
-
-  if (schedule) {
-
-    schedule.onclick =
-      showSchedule;
-
-  }
-
-  const transfer =
-    document.getElementById(
-      "menuTransfer"
-    );
-
-  if (transfer) {
-
-    transfer.onclick =
-      showTransferMarket;
-
-  }
-
-  const scouting =
-    document.getElementById(
-      "menuScouting"
-    );
-
-  if (scouting) {
-
-    scouting.onclick =
-      showScouting;
-
-  }
+  alert(
+    "Scouting System akan hadir di V0.5."
+  );
 
 }
 
@@ -1368,9 +1641,20 @@ function setupMenu() {
 
 function advanceSeason() {
 
+  if (!game.schedule.length) {
+
+    alert(
+      "Season belum dimulai."
+    );
+
+    return;
+
+  }
+
   const unfinished =
     game.schedule.some(
-      match => !match.played
+      match =>
+        !match.played
     );
 
   if (unfinished) {
@@ -1393,6 +1677,8 @@ function advanceSeason() {
 
   createStarters();
 
+  game.currentMatch = null;
+
   saveGame();
 
   renderDashboard();
@@ -1406,9 +1692,13 @@ function advanceSeason() {
 
 /* =========================================================
    PLAYER DEVELOPMENT
+   TANPA TRAINING SYSTEM
 ========================================================= */
 
 function developPlayers() {
+
+  if (!game.league)
+    return;
 
   game.league.teams.forEach(
     team => {
@@ -1417,7 +1707,8 @@ function developPlayers() {
         player => {
 
           player.age =
-            (player.age || 20) + 1;
+            (player.age || 20) +
+            1;
 
           const potential =
             player.potential ||
@@ -1425,14 +1716,28 @@ function developPlayers() {
 
           let change = 0;
 
-          if (player.age <= 21) {
+          /*
+            Young player:
+            lebih besar kemungkinan naik.
+          */
+
+          if (
+            player.age <= 21
+          ) {
 
             change =
               Math.random() < 0.8
                 ? randomInt(1, 3)
                 : -1;
 
-          } else if (
+          }
+
+          /*
+            Prime:
+            bisa naik atau turun.
+          */
+
+          else if (
             player.age <= 25
           ) {
 
@@ -1441,7 +1746,14 @@ function developPlayers() {
                 ? randomInt(0, 1)
                 : -1;
 
-          } else {
+          }
+
+          /*
+            Veteran:
+            lebih banyak kemungkinan turun.
+          */
+
+          else {
 
             change =
               Math.random() < 0.35
@@ -1450,9 +1762,15 @@ function developPlayers() {
 
           }
 
+          /*
+            High potential bonus.
+          */
+
           if (
-            player.rating < potential &&
-            player.potential >= 94 &&
+            player.rating <
+              potential &&
+            player.potential >=
+              94 &&
             change > 0
           ) {
 
@@ -1465,7 +1783,8 @@ function developPlayers() {
               50,
               Math.min(
                 potential,
-                player.rating + change
+                player.rating +
+                  change
               )
             );
 
@@ -1482,7 +1801,10 @@ function developPlayers() {
    HELPERS
 ========================================================= */
 
-function randomInt(min, max) {
+function randomInt(
+  min,
+  max
+) {
 
   return Math.floor(
     Math.random() *
@@ -1512,11 +1834,13 @@ function formatMoney(value) {
 
 function restartGame() {
 
-  if (
-    !confirm(
+  const confirmRestart =
+    confirm(
       "Yakin ingin memulai game baru?"
-    )
-  ) return;
+    );
+
+  if (!confirmRestart)
+    return;
 
   localStorage.removeItem(
     "mlbb_pro_manager_save"
@@ -1535,9 +1859,16 @@ document.addEventListener(
   "DOMContentLoaded",
   () => {
 
-    renderCountries();
+    /*
+      Pastikan halaman pertama
+      selalu terlihat.
+    */
 
-    setupMenu();
+    showScreen(
+      "countryScreen"
+    );
+
+    renderCountries();
 
     loadGame();
 
