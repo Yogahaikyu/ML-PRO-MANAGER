@@ -552,21 +552,28 @@ function playMatch() {
     true
   );
 }
-
 function generateBO3(winner) {
-  let loserScore = Math.random() < 0.58 ? 0 : 1;
+  const match = game.schedule.find(
+    m => m.id === game.currentMatch
+  );
 
-  let winnerScore = 2;
-
-  if (winnerScore === 2 && loserScore === 0) {
-    return winner === game.currentMatch
-      ? { home: 2, away: 0 }
-      : { home: 0, away: 2 };
-  }
-
-  if (winner === undefined) {
+  if (!match) {
     return { home: 2, away: 1 };
   }
+
+  if (winner === match.home) {
+    return {
+      home: 2,
+      away: Math.random() < 0.55 ? 0 : 1
+    };
+  }
+
+  return {
+    home: Math.random() < 0.55 ? 0 : 1,
+    away: 2
+  };
+}
+
 
   return winner === game.schedule.find(
     m => m.id === game.currentMatch
